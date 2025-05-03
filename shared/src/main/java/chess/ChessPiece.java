@@ -58,7 +58,7 @@ public class ChessPiece {
             case BISHOP -> new PieceBishop().pieceMoves(board, myPosition);
             case KNIGHT -> new PieceKnight().pieceMoves(board, myPosition);
             case ROOK -> new PieceRook().pieceMoves(board, myPosition);
-            case PAWN -> null;
+            case PAWN -> new PiecePawn().pieceMoves(board, myPosition);
         };
     }
 }
