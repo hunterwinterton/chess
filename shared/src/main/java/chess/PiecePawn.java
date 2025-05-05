@@ -17,7 +17,7 @@ public class PiecePawn implements PieceMovesCalculator {
         int newRow = row + direction;
 
         ChessPosition moveOne = new ChessPosition(newRow, col);
-        if (newRow >= 1 && newRow <= 8 && board.getPiece(moveOne) == null) {
+        if (board.getPiece(moveOne) == null) {
             if (moveOne.getRow() == promotionRow) {
                 moves.add(new ChessMove(myPosition, moveOne, ChessPiece.PieceType.QUEEN));
                 moves.add(new ChessMove(myPosition, moveOne, ChessPiece.PieceType.ROOK));
