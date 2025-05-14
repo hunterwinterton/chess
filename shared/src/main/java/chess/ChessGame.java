@@ -174,7 +174,7 @@ public class ChessGame {
             for (int col = 1; col <= 8; col++) {
                 ChessPosition position = new ChessPosition(row, col);
                 ChessPiece piece = board.getPiece(position);
-                if (piece == null) {
+                if (piece == null || piece.getTeamColor() != teamColor) {
                     continue;
                 }
                 Collection<ChessMove> moves = piece.pieceMoves(board, position);
