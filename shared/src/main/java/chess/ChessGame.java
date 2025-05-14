@@ -71,6 +71,10 @@ public class ChessGame {
         Collection<ChessMove> moves = piece.pieceMoves(board, startPosition);
         Collection<ChessMove> validMoves = new ArrayList<>();
 
+        if (piece == null) {
+            return validMoves;
+        }
+
         for (ChessMove move : moves) {
             ChessPiece original = board.getPiece(move.getEndPosition());
 
@@ -170,6 +174,9 @@ public class ChessGame {
             for (int col = 1; col <= 8; col++) {
                 ChessPosition position = new ChessPosition(row, col);
                 ChessPiece piece = board.getPiece(position);
+                if (piece == null) {
+                    continue;
+                }
                 Collection<ChessMove> moves = piece.pieceMoves(board, position);
                 for (ChessMove move : moves) {
                     ChessPiece targetPiece = board.getPiece(move.getEndPosition());
