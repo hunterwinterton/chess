@@ -1,0 +1,43 @@
+package service;
+
+import dataaccess.DataAccess;
+import dataaccess.DataAccessException;
+import model.AuthData;
+import model.UserData;
+
+import java.util.UUID;
+
+public class UserService {
+    private final DataAccess db;
+
+    public UserService(DataAccess db) {
+        this.db = db;
+    }
+
+    public AuthData register(UserData user) throws DataAccessException {
+        if (db.getUser(user.username()) != null) {
+            throw new DataAccessException("Username already taken");
+        }
+        db.createUser(user);
+        return createAuth(user.username());
+    }
+
+    public AuthData login(String username, String password) throws DataAccessException {
+        UserData user = db.getUser(username);
+        if (user == null || !user.password().equals(password)) {
+            throw new DataAccessException("Unauthorized");
+        }
+        return createAuth(username);
+    }
+
+    public void logout(String authToken) throws DataAccessException {
+        db.deleteAuth(authToken);
+    }
+
+    private AuthData createAuth(String username) throws DataAccessException {
+        String authToken = UUID.randomUUID().toString();
+        AuthData auth = new AuthData(authToken, username);
+        db.createAuth(auth);
+        return auth;
+    }
+}
