@@ -27,6 +27,31 @@ public class UserHandler {
         }
     }
 
+    public Object login(Request req, Response res) {
+        try {
+            Map<?, ?> body = gson.fromJson(req.body(), Map.class);
+            String username = body.get("username").toString();
+            String password = body.get("password").toString();
+
+            var auth = service.login(username, password);
+            res.status(200);
+            return gson.toJson(auth);
+        } catch (Exception e) {
+            return handleException(e, res);
+        }
+    }
+
+    public Object logout(Request req, Response res) {
+        try {
+            String token = req.headers("authorization");
+            service.logout(token);
+            res.status(200);
+            return "{}";
+        } catch (Exception e) {
+            return handleException(e, res);
+        }
+    }
+
     private Object handleException(Exception e, Response res) {
         if (e.getMessage().contains("already taken")) {
             res.status(403);
