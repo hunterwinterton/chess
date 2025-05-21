@@ -31,6 +31,9 @@ public class UserService {
     }
 
     public void logout(String authToken) throws DataAccessException {
+        if (db.getAuth(authToken) == null) {
+            throw new DataAccessException("Error: unauthorized");
+        }
         db.deleteAuth(authToken);
     }
 
