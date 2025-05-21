@@ -1,0 +1,40 @@
+package handler;
+
+import com.google.gson.Gson;
+import service.UserService;
+import model.UserData;
+import spark.Request;
+import spark.Response;
+
+import java.util.Map;
+
+public class UserHandler {
+    private final UserService service;
+    private final Gson gson = new Gson();
+
+    public UserHandler(UserService service) {
+        this.service = service;
+    }
+
+    public Object register(Request req, Response res) {
+        try {
+            UserData user = gson.fromJson(req.body(), UserData.class);
+            var auth = service.register(user);
+            res.status(200);
+            return gson.toJson(auth);
+        } catch (Exception e) {
+            return handleException(e, res);
+        }
+    }
+
+    private Object handleException(Exception e, Response res) {
+        if (e.getMessage().contains("already taken")) {
+            res.status(403);
+        } else if (e.getMessage().contains("unauthorized")) {
+            res.status(401);
+        } else {
+            res.status(400);
+        }
+        return gson.toJson(Map.of("message", e.getMessage()));
+    }
+}
