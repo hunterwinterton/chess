@@ -16,7 +16,7 @@ public class UserService {
 
     public AuthData register(UserData user) throws DataAccessException {
         if (db.getUser(user.username()) != null) {
-            throw new DataAccessException("Username already taken");
+            throw new DataAccessException("Error: already taken");
         }
         db.createUser(user);
         return createAuth(user.username());
@@ -25,7 +25,7 @@ public class UserService {
     public AuthData login(String username, String password) throws DataAccessException {
         UserData user = db.getUser(username);
         if (user == null || !user.password().equals(password)) {
-            throw new DataAccessException("Unauthorized");
+            throw new DataAccessException("Error: unauthorized");
         }
         return createAuth(username);
     }

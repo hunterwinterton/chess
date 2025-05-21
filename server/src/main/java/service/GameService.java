@@ -35,7 +35,7 @@ public class GameService {
         GameData game = db.getGame(gameID);
 
         if (game == null) {
-            throw new DataAccessException("Game not found");
+            throw new DataAccessException("Error: Game not found");
         }
 
         String username = auth.username();
@@ -43,19 +43,19 @@ public class GameService {
         String black = game.blackUsername();
 
         if ("WHITE".equalsIgnoreCase(playerColor)) {
-            if (white != null) throw new DataAccessException("Color already taken");
+            if (white != null) throw new DataAccessException("Error: Color already taken");
             db.updateGame(new GameData(gameID, username, black, game.gameName(), game.game()));
         } else if ("BLACK".equalsIgnoreCase(playerColor)) {
-            if (black != null) throw new DataAccessException("Color already taken");
+            if (black != null) throw new DataAccessException("Error: Color already taken");
             db.updateGame(new GameData(gameID, white, username, game.gameName(), game.game()));
         } else {
-            throw new DataAccessException("Invalid color");
+            throw new DataAccessException("Error: Invalid color");
         }
     }
 
     private AuthData validateAuth(String token) throws DataAccessException {
         AuthData auth = db.getAuth(token);
-        if (auth == null) throw new DataAccessException("Unauthorized");
+        if (auth == null) throw new DataAccessException("Error: unauthorized");
         return auth;
     }
 }
