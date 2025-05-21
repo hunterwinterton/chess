@@ -43,10 +43,14 @@ public class GameService {
         String black = game.blackUsername();
 
         if ("WHITE".equalsIgnoreCase(playerColor)) {
-            if (white != null) throw new DataAccessException("Error: Color already taken");
+            if (white != null) {
+                throw new DataAccessException("Error: Color already taken");
+            }
             db.updateGame(new GameData(gameID, username, black, game.gameName(), game.game()));
         } else if ("BLACK".equalsIgnoreCase(playerColor)) {
-            if (black != null) throw new DataAccessException("Error: Color already taken");
+            if (black != null) {
+                throw new DataAccessException("Error: Color already taken");
+            }
             db.updateGame(new GameData(gameID, white, username, game.gameName(), game.game()));
         } else {
             throw new DataAccessException("Error: Invalid color");
@@ -55,7 +59,9 @@ public class GameService {
 
     private AuthData validateAuth(String token) throws DataAccessException {
         AuthData auth = db.getAuth(token);
-        if (auth == null) throw new DataAccessException("Error: unauthorized");
+        if (auth == null) {
+            throw new DataAccessException("Error: unauthorized");
+        }
         return auth;
     }
 }
