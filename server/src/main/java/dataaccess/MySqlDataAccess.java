@@ -1,11 +1,15 @@
 package dataaccess;
 
+import chess.ChessGame;
 import com.google.gson.Gson;
 import model.AuthData;
+import model.GameData;
 import model.UserData;
 import org.mindrot.jbcrypt.BCrypt;
 
+import java.util.Collection;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 public class MySqlDataAccess implements DataAccess {
     private final Gson gson = new Gson();
@@ -104,5 +108,64 @@ public class MySqlDataAccess implements DataAccess {
 
     public void deleteAuth(String token) throws DataAccessException {
         executeUpdate("DELETE FROM auth WHERE token=?", token);
+    }
+
+    public int createGame(GameData game) throws DataAccessException {
+        String json = gson.toJson(game.game());
+        return executeInsert(
+                "INSERT INTO game(whiteUsername,blackUsername,gameName,gameState) VALUES(?,?,?,?)",
+                game.whiteUsername(), game.blackUsername(), game.gameName(), json
+        );
+    }
+
+    public GameData getGame(int id) throws DataAccessException {
+        String sql = "SELECT * FROM game WHERE id=?";
+        try (var conn = DatabaseManager.getConnection();
+             var ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (var rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new GameData(
+                            id,
+                            rs.getString("whiteUsername"),
+                            rs.getString("blackUsername"),
+                            rs.getString("gameName"),
+                            gson.fromJson(rs.getString("gameState"), ChessGame.class)
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException(e.getMessage());
+        }
+        return null;
+    }
+
+    public Collection<GameData> listGames() throws DataAccessException {
+        var games = new ArrayList<GameData>();
+        String sql = "SELECT * FROM game";
+        try (var conn = DatabaseManager.getConnection();
+             var ps = conn.prepareStatement(sql);
+             var rs = ps.executeQuery()) {
+            while (rs.next()) {
+                games.add(new GameData(
+                        rs.getInt("id"),
+                        rs.getString("whiteUsername"),
+                        rs.getString("blackUsername"),
+                        rs.getString("gameName"),
+                        gson.fromJson(rs.getString("gameState"), ChessGame.class)
+                ));
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException(e.getMessage());
+        }
+        return games;
+    }
+
+    public void updateGame(GameData game) throws DataAccessException {
+        String json = gson.toJson(game.game());
+        executeUpdate(
+                "UPDATE game SET whiteUsername=?,blackUsername=?,gameName=?,gameState=? WHERE id=?",
+                game.whiteUsername(), game.blackUsername(), game.gameName(), json, game.gameID()
+        );
     }
 }
