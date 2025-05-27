@@ -1,7 +1,9 @@
 package server;
 
 import dataaccess.DataAccess;
+import dataaccess.DataAccessException;
 import dataaccess.MemoryDataAccess;
+import dataaccess.MySqlDataAccess;
 import handler.ClearHandler;
 import handler.GameHandler;
 import handler.UserHandler;
@@ -22,7 +24,13 @@ public class Server {
         //This line initializes the server and can be removed once you have a functioning endpoint
         Spark.init();
 
-        DataAccess db = new MemoryDataAccess();
+        final DataAccess db;
+        try {
+            db = new MySqlDataAccess();
+        } catch (DataAccessException e) {
+            throw new RuntimeException("Unable to initialize database", e);
+        }
+
         UserService userService = new UserService(db);
         GameService gameService = new GameService(db);
         ClearService clearService = new ClearService(db);

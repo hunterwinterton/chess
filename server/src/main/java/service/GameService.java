@@ -18,7 +18,7 @@ public class GameService {
     public int createGame(String authToken, String gameName) throws DataAccessException {
         validateAuth(authToken);
         if (gameName == null || gameName.isEmpty()) {
-            throw new DataAccessException("Missing game name");
+            throw new DataAccessException("Error: Missing game name");
         }
 
         GameData newGame = new GameData(0, null, null, gameName, new ChessGame());

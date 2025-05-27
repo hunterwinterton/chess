@@ -7,9 +7,12 @@ import model.GameData;
 import model.UserData;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.util.Collection;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.ArrayList;
+import java.util.Collection;
+
+import static java.sql.Statement.RETURN_GENERATED_KEYS;
+import static java.sql.Types.NULL;
 
 public class MySqlDataAccess implements DataAccess {
     private final Gson gson = new Gson();
@@ -41,15 +44,18 @@ public class MySqlDataAccess implements DataAccess {
 
     public MySqlDataAccess() throws DataAccessException {
         DatabaseManager.createDatabase();
+        try (var conn = DatabaseManager.getConnection()) {
+            configureDatabase();
+        } catch (SQLException e) {
+            throw new DataAccessException("Error: " + e.getMessage());
+        }
     }
 
-    public void clear() {
+
+    public void clear() throws DataAccessException {
         executeUpdate("TRUNCATE TABLE auth");
         executeUpdate("TRUNCATE TABLE game");
         executeUpdate("TRUNCATE TABLE user");
-    }
-
-    private void executeUpdate(String statement, Object... params) {
     }
 
     public void createUser(UserData user) throws DataAccessException {
@@ -75,7 +81,7 @@ public class MySqlDataAccess implements DataAccess {
                 }
             }
         } catch (SQLException e) {
-            throw new DataAccessException(e.getMessage());
+            throw new DataAccessException("Error: " + e.getMessage());
         }
         return null;
     }
@@ -101,7 +107,7 @@ public class MySqlDataAccess implements DataAccess {
                 }
             }
         } catch (SQLException e) {
-            throw new DataAccessException(e.getMessage());
+            throw new DataAccessException("Error: " + e.getMessage());
         }
         return null;
     }
@@ -135,13 +141,13 @@ public class MySqlDataAccess implements DataAccess {
                 }
             }
         } catch (SQLException e) {
-            throw new DataAccessException(e.getMessage());
+            throw new DataAccessException("Error: " + e.getMessage());
         }
         return null;
     }
 
     public Collection<GameData> listGames() throws DataAccessException {
-        var games = new ArrayList<GameData>();
+        Collection<GameData> games = new ArrayList<>();
         String sql = "SELECT * FROM game";
         try (var conn = DatabaseManager.getConnection();
              var ps = conn.prepareStatement(sql);
@@ -156,7 +162,7 @@ public class MySqlDataAccess implements DataAccess {
                 ));
             }
         } catch (SQLException e) {
-            throw new DataAccessException(e.getMessage());
+            throw new DataAccessException("Error: " + e.getMessage());
         }
         return games;
     }
@@ -167,5 +173,54 @@ public class MySqlDataAccess implements DataAccess {
                 "UPDATE game SET whiteUsername=?,blackUsername=?,gameName=?,gameState=? WHERE id=?",
                 game.whiteUsername(), game.blackUsername(), game.gameName(), json, game.gameID()
         );
+    }
+
+    // HELPERS
+
+    private void configureDatabase() throws DataAccessException {
+        try (var conn = DatabaseManager.getConnection()) {
+            for (String stmt : createStatements) {
+                try (var ps = conn.prepareStatement(stmt)) {
+                    ps.executeUpdate();
+                }
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Error: " + e.getMessage());
+        }
+    }
+
+    private int executeInsert(String sql, Object... params) throws DataAccessException {
+        try (var conn = DatabaseManager.getConnection();
+             var ps = conn.prepareStatement(sql, RETURN_GENERATED_KEYS)) {
+            for (int i = 0; i < params.length; i++) {
+                if (params[i] == null) {
+                    ps.setNull(i+1, NULL);
+                } else {
+                    ps.setObject(i+1, params[i]);
+                }
+            }
+            ps.executeUpdate();
+            try (var rs = ps.getGeneratedKeys()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Error: " + e.getMessage());
+        }
+    }
+
+    private void executeUpdate(String sql, Object... params) throws DataAccessException {
+        try (Connection conn = DatabaseManager.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            for (int i = 0; i < params.length; i++) {
+                if (params[i] == null) {
+                    ps.setNull(i+1, NULL);
+                } else {
+                    ps.setObject(i+1, params[i]);
+                }
+            }
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new DataAccessException("Error: " + e.getMessage());
+        }
     }
 }
