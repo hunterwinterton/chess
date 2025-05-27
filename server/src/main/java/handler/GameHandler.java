@@ -65,7 +65,7 @@ public class GameHandler {
         } else if (msg.contains("not found")) {
             res.status(404);
         } else {
-            res.status(400);
+            res.status(500);
         }
         return gson.toJson(Map.of("message", "Error: " + e.getMessage()));
     }
