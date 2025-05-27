@@ -18,7 +18,7 @@ public class GameHandler {
 
     public Object createGame(Request req, Response res) {
         try {
-            String authToken = req.headers("authorization");
+            String authToken = req.headers("Authorization");
             Map<?, ?> body = gson.fromJson(req.body(), Map.class);
             String gameName = body.get("gameName").toString();
 
@@ -32,7 +32,7 @@ public class GameHandler {
 
     public Object listGames(Request req, Response res) {
         try {
-            String authToken = req.headers("authorization");
+            String authToken = req.headers("Authorization");
             var games = service.listGames(authToken);
             res.status(200);
             return gson.toJson(Map.of("games", games));
@@ -43,7 +43,7 @@ public class GameHandler {
 
     public Object joinGame(Request req, Response res) {
         try {
-            String authToken = req.headers("authorization");
+            String authToken = req.headers("Authorization");
             Map<?, ?> body = gson.fromJson(req.body(), Map.class);
             String playerColor = body.get("playerColor").toString();
             int gameID = ((Double) body.get("gameID")).intValue();

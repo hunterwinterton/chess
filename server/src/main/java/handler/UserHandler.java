@@ -51,7 +51,7 @@ public class UserHandler {
 
     public Object logout(Request req, Response res) {
         try {
-            String token = req.headers("authorization");
+            String token = req.headers("Authorization");
             if (token == null || token.isEmpty()) {
                 throw new IllegalArgumentException("Error: unauthorized");
             }
@@ -74,6 +74,6 @@ public class UserHandler {
         } else {
             res.status(500);
         }
-        return gson.toJson(Map.of("Error", e.getMessage()));
+        return gson.toJson(Map.of("message", e.getMessage()));
     }
 }
