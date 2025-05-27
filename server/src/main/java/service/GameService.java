@@ -18,7 +18,7 @@ public class GameService {
     public int createGame(String authToken, String gameName) throws DataAccessException {
         validateAuth(authToken);
         if (gameName == null || gameName.isEmpty()) {
-            throw new DataAccessException("Error: Missing game name");
+            throw new DataAccessException("Error: bad request");
         }
 
         GameData newGame = new GameData(0, null, null, gameName, new ChessGame());
@@ -53,7 +53,7 @@ public class GameService {
             }
             db.updateGame(new GameData(gameID, white, username, game.gameName(), game.game()));
         } else {
-            throw new DataAccessException("Error: Invalid color");
+            throw new DataAccessException("Error: bad request");
         }
     }
 

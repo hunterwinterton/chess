@@ -20,6 +20,13 @@ public class GameHandler {
         try {
             String authToken = req.headers("Authorization");
             Map<?, ?> body = gson.fromJson(req.body(), Map.class);
+
+            if (body == null
+                    || body.get("gameName") == null
+                    || body.get("gameName").toString().isEmpty()) {
+                throw new IllegalArgumentException("Error: bad request");
+            }
+
             String gameName = body.get("gameName").toString();
 
             var gameID = service.createGame(authToken, gameName);
@@ -45,8 +52,21 @@ public class GameHandler {
         try {
             String authToken = req.headers("Authorization");
             Map<?, ?> body = gson.fromJson(req.body(), Map.class);
+
+            if (body == null
+                    || body.get("gameID") == null
+                    || body.get("playerColor") == null) {
+                throw new IllegalArgumentException("Error: bad request");
+            }
+
             String playerColor = body.get("playerColor").toString();
-            int gameID = ((Double) body.get("gameID")).intValue();
+
+            int gameID;
+            try {
+                gameID = ((Double) body.get("gameID")).intValue();
+            } catch (ClassCastException ex) {
+                throw new IllegalArgumentException("Error: bad request");
+            }
 
             service.joinGame(authToken, gameID, playerColor);
             res.status(200);
