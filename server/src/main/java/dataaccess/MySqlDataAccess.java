@@ -18,8 +18,9 @@ public class MySqlDataAccess implements DataAccess {
     private final Gson gson = new Gson();
     private final String[] createStatements = {
             """
-        CREATE TABLE IF NOT EXISTS user (
-          username VARCHAR(100) PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          username VARCHAR(100) NOT NULL UNIQUE,
           password VARCHAR(100) NOT NULL,
           email VARCHAR(100) NOT NULL
         )
@@ -28,11 +29,11 @@ public class MySqlDataAccess implements DataAccess {
         CREATE TABLE IF NOT EXISTS auth (
           token VARCHAR(100) PRIMARY KEY,
           username VARCHAR(100),
-          FOREIGN KEY(username) REFERENCES user(username) ON DELETE CASCADE
+          FOREIGN KEY(username) REFERENCES users(username) ON DELETE CASCADE
         )
         """,
             """
-        CREATE TABLE IF NOT EXISTS game (
+        CREATE TABLE IF NOT EXISTS games (
           id INT AUTO_INCREMENT PRIMARY KEY,
           whiteUsername VARCHAR(100),
           blackUsername VARCHAR(100),
@@ -53,21 +54,20 @@ public class MySqlDataAccess implements DataAccess {
 
 
     public void clear() throws DataAccessException {
-        executeUpdate("TRUNCATE TABLE auth");
-        executeUpdate("TRUNCATE TABLE game");
-        executeUpdate("TRUNCATE TABLE user");
+        executeUpdate("DELETE FROM games");
+        executeUpdate("DELETE FROM users");
     }
 
     public void createUser(UserData user) throws DataAccessException {
         String hashed = BCrypt.hashpw(user.password(), BCrypt.gensalt());
         executeUpdate(
-                "INSERT INTO user(username,password,email) VALUES(?,?,?)",
+                "INSERT INTO users(username,password,email) VALUES(?,?,?)",
                 user.username(), hashed, user.email()
         );
     }
 
     public UserData getUser(String username) throws DataAccessException {
-        String sql = "SELECT username,password,email FROM user WHERE username=?";
+        String sql = "SELECT username,password,email FROM users WHERE username=?";
         try (var conn = DatabaseManager.getConnection();
              var ps = conn.prepareStatement(sql)) {
             ps.setString(1, username);
@@ -119,13 +119,13 @@ public class MySqlDataAccess implements DataAccess {
     public int createGame(GameData game) throws DataAccessException {
         String json = gson.toJson(game.game());
         return executeInsert(
-                "INSERT INTO game(whiteUsername,blackUsername,gameName,gameState) VALUES(?,?,?,?)",
+                "INSERT INTO games(whiteUsername,blackUsername,gameName,gameState) VALUES(?,?,?,?)",
                 game.whiteUsername(), game.blackUsername(), game.gameName(), json
         );
     }
 
     public GameData getGame(int id) throws DataAccessException {
-        String sql = "SELECT * FROM game WHERE id=?";
+        String sql = "SELECT * FROM games WHERE id=?";
         try (var conn = DatabaseManager.getConnection();
              var ps = conn.prepareStatement(sql)) {
             ps.setInt(1, id);
@@ -148,7 +148,7 @@ public class MySqlDataAccess implements DataAccess {
 
     public Collection<GameData> listGames() throws DataAccessException {
         Collection<GameData> games = new ArrayList<>();
-        String sql = "SELECT * FROM game";
+        String sql = "SELECT * FROM games";
         try (var conn = DatabaseManager.getConnection();
              var ps = conn.prepareStatement(sql);
              var rs = ps.executeQuery()) {
@@ -170,7 +170,7 @@ public class MySqlDataAccess implements DataAccess {
     public void updateGame(GameData game) throws DataAccessException {
         String json = gson.toJson(game.game());
         executeUpdate(
-                "UPDATE game SET whiteUsername=?,blackUsername=?,gameName=?,gameState=? WHERE id=?",
+                "UPDATE games SET whiteUsername=?,blackUsername=?,gameName=?,gameState=? WHERE id=?",
                 game.whiteUsername(), game.blackUsername(), game.gameName(), json, game.gameID()
         );
     }

@@ -64,6 +64,8 @@ public class GameHandler {
             res.status(401);
         } else if (msg.contains("not found")) {
             res.status(404);
+        } else if (msg.contains("bad request")) {
+            res.status(400);
         } else {
             res.status(500);
         }
