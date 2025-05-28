@@ -1,7 +1,8 @@
 package service;
 
+import dataaccess.DataAccess;
 import dataaccess.DataAccessException;
-import dataaccess.MemoryDataAccess;
+import dataaccess.MySqlDataAccess;
 import model.AuthData;
 import model.GameData;
 import model.UserData;
@@ -15,12 +16,13 @@ import static org.junit.jupiter.api.Assertions.*;
 class GameServiceTest {
 
     private GameService gameService;
-    private MemoryDataAccess db;
+    private DataAccess db;
     private String authToken;
 
     @BeforeEach
     void setUp() throws DataAccessException {
-        db = new MemoryDataAccess();
+        db = new MySqlDataAccess();
+        db.clear();
         gameService = new GameService(db);
 
         UserData user = new UserData("hunter", "byu", "email");

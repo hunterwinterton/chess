@@ -1,7 +1,6 @@
 package service;
 
 import dataaccess.*;
-import model.AuthData;
 import model.UserData;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,11 +9,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class UserServiceTest {
     private UserService service;
-    private MemoryDataAccess db;
 
     @BeforeEach
-    void setup() {
-        db = new MemoryDataAccess();
+    void setup() throws DataAccessException {
+        DataAccess db = new MySqlDataAccess();
+        db.clear();
         service = new UserService(db);
     }
 

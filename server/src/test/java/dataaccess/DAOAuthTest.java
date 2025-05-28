@@ -50,4 +50,12 @@ public class DAOAuthTest {
     void getAuthNonexistentReturnsNull() throws DataAccessException {
         assertNull(dao.getAuth("noToken"));
     }
+
+    @Test
+    void createAuthInvalidUserThrows() {
+        AuthData bad = new AuthData("badToken", "doesNotExist");
+        assertThrows(DataAccessException.class, () ->
+                dao.createAuth(bad)
+        );
+    }
 }

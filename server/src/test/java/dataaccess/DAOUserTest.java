@@ -40,4 +40,12 @@ public class DAOUserTest {
     void getUserNonexistentReturnsNull() throws DataAccessException {
         assertNull(dao.getUser("noSuchUser"));
     }
+
+    @Test
+    void getUserSuccessAfterCreate() throws DataAccessException {
+        dao.createUser(new UserData("hunter2", "pass", "hunter2@example.com"));
+        UserData u = dao.getUser("hunter2");
+        assertNotNull(u);
+        assertEquals("hunter2@example.com", u.email());
+    }
 }
