@@ -58,4 +58,24 @@ public class DAOAuthTest {
                 dao.createAuth(bad)
         );
     }
+
+    @Test
+    void createAuthWithoutUserThrows() {
+        AuthData bad = new AuthData("noUserToken", "ghostUser");
+        assertThrows(DataAccessException.class, () -> dao.createAuth(bad));
+    }
+
+    @Test
+    void createAuthDuplicateTokenThrows() throws DataAccessException {
+        dao.createUser(new UserData("u1", "pass", "u1@mail.com"));
+        AuthData a1 = new AuthData("dupToken", "u1");
+        dao.createAuth(a1);
+        assertThrows(DataAccessException.class, () -> dao.createAuth(a1));
+    }
+
+    @Test
+    void deleteAuthNonexistentDoesNothing() throws DataAccessException {
+        assertDoesNotThrow(() -> dao.deleteAuth("missing"));
+        assertNull(dao.getAuth("missing"));
+    }
 }

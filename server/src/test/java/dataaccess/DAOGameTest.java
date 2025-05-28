@@ -75,4 +75,14 @@ public class DAOGameTest {
                 dao.createGame(null)
         );
     }
+
+    @Test
+    void listGamesEmptyReturnsEmpty() throws DataAccessException {
+        assertTrue(dao.listGames().isEmpty());
+    }
+
+    @Test
+    void updateGameNullThrows() {
+        assertThrows(NullPointerException.class, () -> dao.updateGame(null));
+    }
 }
