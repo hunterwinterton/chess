@@ -14,10 +14,11 @@ public class DAOClearTest {
     @BeforeAll
     void setup() throws Exception {
         dao = new MySqlDataAccess();
+        dao.clear();
     }
 
     @Test
-    void clear_removesAllData() throws DataAccessException {
+    void clearRemovesAllData() throws DataAccessException {
 
         dao.createUser(new UserData("hunter", "pass", "hunter@email.com"));
         dao.createUser(new UserData("winter", "pass", "winter@email.com"));

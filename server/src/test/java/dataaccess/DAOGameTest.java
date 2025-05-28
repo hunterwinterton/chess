@@ -21,7 +21,7 @@ public class DAOGameTest {
     }
 
     @Test
-    void createGame_and_getGame_success() throws DataAccessException {
+    void createGameGetGameSuccess() throws DataAccessException {
         GameData g = new GameData(0, null, null, "MyGame", new ChessGame());
         int id = dao.createGame(g);
         GameData fetched = dao.getGame(id);
@@ -32,7 +32,7 @@ public class DAOGameTest {
     }
 
     @Test
-    void listGames_returnsAllInserted() throws DataAccessException {
+    void listGamesReturnsAllInserted() throws DataAccessException {
         dao.createGame(new GameData(0, "hunter", null, "G1", new ChessGame()));
         dao.createGame(new GameData(0, null, "winter", "G2", new ChessGame()));
         List<GameData> list = new ArrayList<>(dao.listGames());
@@ -43,12 +43,12 @@ public class DAOGameTest {
     }
 
     @Test
-    void getGame_nonexistent_returnsNull() throws DataAccessException {
+    void getGameNonexistentReturnsNull() throws DataAccessException {
         assertNull(dao.getGame(999));
     }
 
     @Test
-    void updateGame_success() throws DataAccessException {
+    void updateGameSuccess() throws DataAccessException {
         int id = dao.createGame(new GameData(0, null, null, "UpGame", new ChessGame()));
         GameData updated = new GameData(id, "hunter", "winter", "UpGame", new ChessGame());
         dao.updateGame(updated);
@@ -58,7 +58,7 @@ public class DAOGameTest {
     }
 
     @Test
-    void updateGame_nonexistent() throws DataAccessException {
+    void updateGameNonexistent() throws DataAccessException {
         GameData g = new GameData(42, "x", "y", "NoGame", new ChessGame());
         dao.updateGame(g);
         assertNull(dao.getGame(42));

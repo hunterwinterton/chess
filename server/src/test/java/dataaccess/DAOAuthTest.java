@@ -20,7 +20,7 @@ public class DAOAuthTest {
     }
 
     @Test
-    void createAuth_and_getAuth_success() throws DataAccessException {
+    void createAuthGetAuthSuccess() throws DataAccessException {
         dao.createUser(new UserData(
                 "hunter",
                 "ignoredHash",
@@ -34,7 +34,7 @@ public class DAOAuthTest {
     }
 
     @Test
-    void deleteAuth_success() throws DataAccessException {
+    void deleteAuthSuccess() throws DataAccessException {
         dao.createUser(new UserData(
                 "winter",
                 "ignoredHash",
@@ -47,7 +47,7 @@ public class DAOAuthTest {
     }
 
     @Test
-    void getAuth_nonexistent_returnsNull() throws DataAccessException {
+    void getAuthNonexistentReturnsNull() throws DataAccessException {
         assertNull(dao.getAuth("noToken"));
     }
 }
