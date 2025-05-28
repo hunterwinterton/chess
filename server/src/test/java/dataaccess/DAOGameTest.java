@@ -58,10 +58,9 @@ public class DAOGameTest {
     }
 
     @Test
-    void updateGame_nonexistent() {
+    void updateGame_nonexistent() throws DataAccessException {
         GameData g = new GameData(42, "x", "y", "NoGame", new ChessGame());
-        assertThrows(DataAccessException.class, () ->
-                dao.updateGame(g)
-        );
+        dao.updateGame(g);
+        assertNull(dao.getGame(42));
     }
 }

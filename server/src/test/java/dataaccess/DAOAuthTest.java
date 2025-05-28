@@ -1,6 +1,7 @@
 package dataaccess;
 
 import model.AuthData;
+import model.UserData;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -20,6 +21,11 @@ public class DAOAuthTest {
 
     @Test
     void createAuth_and_getAuth_success() throws DataAccessException {
+        dao.createUser(new UserData(
+                "hunter",
+                "ignoredHash",
+                "hunter@email.com"
+        ));
         AuthData a = new AuthData("tokenH", "hunter");
         dao.createAuth(a);
         AuthData fetched = dao.getAuth("tokenH");
@@ -29,6 +35,11 @@ public class DAOAuthTest {
 
     @Test
     void deleteAuth_success() throws DataAccessException {
+        dao.createUser(new UserData(
+                "winter",
+                "ignoredHash",
+                "winter@email.com"
+        ));
         AuthData a = new AuthData("tokenW", "winter");
         dao.createAuth(a);
         dao.deleteAuth("tokenW");
