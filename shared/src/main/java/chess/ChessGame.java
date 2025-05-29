@@ -146,16 +146,16 @@ public class ChessGame {
             for (int col = 1; col <= 8; col++) {
                 ChessPosition position = new ChessPosition(row, col);
                 ChessPiece piece = board.getPiece(position);
-                if (piece != null && piece.getTeamColor() != teamColor) {
-                    for (ChessMove move : piece.pieceMoves(board, position)) {
-                        if (move.getEndPosition().equals(king)) {
-                            return true;
-                        }
+                if (piece == null || piece.getTeamColor() == teamColor) {
+                    continue;
+                }
+                for (ChessMove move : piece.pieceMoves(board, position)) {
+                    if (move.getEndPosition().equals(king)) {
+                        return true;
                     }
                 }
             }
         }
-
         return false;
     }
 
@@ -197,47 +197,47 @@ public class ChessGame {
         return true;
     }
 
-        /**
-         * Determines if the given team is in stalemate, which here is defined as having
-         * no valid moves
-         *
-         * @param teamColor which team to check for stalemate
-         * @return True if the specified team is in stalemate, otherwise false
-         */
-        public boolean isInStalemate (TeamColor teamColor){
-            if (isInCheck(teamColor)) {
-                return false;
-            }
+    /**
+     * Determines if the given team is in stalemate, which here is defined as having
+     * no valid moves
+     *
+     * @param teamColor which team to check for stalemate
+     * @return True if the specified team is in stalemate, otherwise false
+     */
+    public boolean isInStalemate(TeamColor teamColor) {
+        if (isInCheck(teamColor)) {
+            return false;
+        }
 
-            for (int row = 1; row <= 8; row++) {
-                for (int col = 1; col <= 8; col++) {
-                    ChessPosition position = new ChessPosition(row, col);
-                    ChessPiece piece = board.getPiece(position);
-                    if (piece != null && piece.getTeamColor() == teamColor) {
-                        if (!validMoves(position).isEmpty()) {
-                            return false;
-                        }
+        for (int row = 1; row <= 8; row++) {
+            for (int col = 1; col <= 8; col++) {
+                ChessPosition position = new ChessPosition(row, col);
+                ChessPiece piece = board.getPiece(position);
+                if (piece != null && piece.getTeamColor() == teamColor) {
+                    if (!validMoves(position).isEmpty()) {
+                        return false;
                     }
                 }
             }
-            return true;
         }
-
-        /**
-         * Sets this game's chessboard with a given board
-         *
-         * @param board the new board to use
-         */
-        public void setBoard (ChessBoard board){
-            this.board = board;
-        }
-
-        /**
-         * Gets the current chessboard
-         *
-         * @return the chessboard
-         */
-        public ChessBoard getBoard () {
-            return this.board;
-        }
+        return true;
     }
+
+    /**
+     * Sets this game's chessboard with a given board
+     *
+     * @param board the new board to use
+     */
+    public void setBoard(ChessBoard board) {
+        this.board = board;
+    }
+
+    /**
+     * Gets the current chessboard
+     *
+     * @return the chessboard
+     */
+    public ChessBoard getBoard() {
+        return this.board;
+    }
+}
