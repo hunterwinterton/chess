@@ -9,6 +9,9 @@ public class Main {
         System.out.println("Type 'help' for a list of commands");
 
         String serverUrl = "http://localhost:8080";
+        if (args.length == 1) {
+            serverUrl = args[0];
+        }
         new PreLoginRepl(new ServerFacade(serverUrl)).run();
     }
 }
