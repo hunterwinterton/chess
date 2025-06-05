@@ -66,7 +66,15 @@ public class PostLoginRepl {
         }
         try {
             int gameID = serverFacade.createGame(tokens[1]);
-            System.out.println("Game created with ID: " + gameID);
+            currentGames = serverFacade.listGames().getGames();
+            int clientIndex = -1;
+            for (int i = 0; i < currentGames.size(); i++) {
+                if (currentGames.get(i).gameID() == gameID) {
+                    clientIndex = i + 1;
+                    break;
+                }
+            }
+            System.out.println("Game created with ID: " + clientIndex);
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
         }
@@ -87,7 +95,7 @@ public class PostLoginRepl {
                         i + 1, g.gameName(), white, black);
             }
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -110,7 +118,7 @@ public class PostLoginRepl {
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
+            System.out.println("Error: " + e.getMessage());
         }
     }
 
@@ -132,7 +140,7 @@ public class PostLoginRepl {
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
+            System.out.println("Error: " + e.getMessage());
         }
     }
 }

@@ -106,6 +106,10 @@ public class ServerFacade {
         public int getGameID() {
             return gameID;
         }
+
+        public void setGameID(int gameID) {
+            this.gameID = gameID;
+        }
     }
 
     public record JoinGameRequest(String playerColor, int gameID) {
