@@ -9,7 +9,7 @@ import static ui.EscapeSequences.*;
 
 public class ChessBoardDrawer {
 
-    private static final String[] COL_LABELS = { "a", "b", "c", "d", "e", "f", "g", "h" };
+    private static final String[] COL_LABELS = {"a", "b", "c", "d", "e", "f", "g", "h"};
 
     public static void drawBoard(String perspective) {
         boolean whitePerspective = "WHITE".equalsIgnoreCase(perspective);
@@ -29,18 +29,17 @@ public class ChessBoardDrawer {
             System.out.print(displayRank + " ");
 
             for (int col = 0; col < 8; col++) {
-                int file = whitePerspective ? col : 7 - col;
-                int boardRank = whitePerspective ? 8 - displayRank : displayRank;
+                int boardRowIndex = whitePerspective ? (8 - displayRank) : (displayRank - 1);
+                int boardColIndex = whitePerspective ? col : (7 - col);
 
-                int boardRowIndex = boardRank - 1;
-
-                if ((boardRowIndex + file) % 2 == 0) {
+                if ((boardRowIndex + boardColIndex) % 2 == 0) {
                     System.out.print(SET_BG_COLOR_LIGHT_GREY);
                 } else {
                     System.out.print(SET_BG_COLOR_DARK_GREY);
                 }
 
-                ChessPiece piece = board.getPiece(new ChessPosition(boardRowIndex + 1, file + 1));
+                ChessPiece piece = board.getPiece(
+                        new ChessPosition(boardRowIndex + 1, boardColIndex + 1));
                 System.out.print(pieceToUnicode(piece));
             }
             System.out.println(RESET_BG_COLOR + " " + displayRank);
@@ -62,12 +61,12 @@ public class ChessBoardDrawer {
         ChessPiece.PieceType type = piece.getPieceType();
 
         return switch (type) {
-            case KING   -> (color == ChessGame.TeamColor.WHITE ? WHITE_KING   : BLACK_KING);
-            case QUEEN  -> (color == ChessGame.TeamColor.WHITE ? WHITE_QUEEN  : BLACK_QUEEN);
+            case KING -> (color == ChessGame.TeamColor.WHITE ? WHITE_KING : BLACK_KING);
+            case QUEEN -> (color == ChessGame.TeamColor.WHITE ? WHITE_QUEEN : BLACK_QUEEN);
             case BISHOP -> (color == ChessGame.TeamColor.WHITE ? WHITE_BISHOP : BLACK_BISHOP);
             case KNIGHT -> (color == ChessGame.TeamColor.WHITE ? WHITE_KNIGHT : BLACK_KNIGHT);
-            case ROOK   -> (color == ChessGame.TeamColor.WHITE ? WHITE_ROOK   : BLACK_ROOK);
-            case PAWN   -> (color == ChessGame.TeamColor.WHITE ? WHITE_PAWN   : BLACK_PAWN);
+            case ROOK -> (color == ChessGame.TeamColor.WHITE ? WHITE_ROOK : BLACK_ROOK);
+            case PAWN -> (color == ChessGame.TeamColor.WHITE ? WHITE_PAWN : BLACK_PAWN);
         };
     }
 }
