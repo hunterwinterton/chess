@@ -17,7 +17,7 @@ public class ServerFacade {
     private String authToken;
     private final Gson gson = new Gson();
 
-    public ServerFacade(String port) {
+    public ServerFacade(int port) {
         this.serverUrl = "http://localhost:" + port;
     }
 
@@ -101,14 +101,10 @@ public class ServerFacade {
     }
 
     public static class CreateGameResponse {
-        private int gameID;
+        public int gameID;
 
         public int getGameID() {
             return gameID;
-        }
-
-        public void setGameID(int gameID) {
-            this.gameID = gameID;
         }
     }
 
@@ -116,14 +112,10 @@ public class ServerFacade {
     }
 
     public static class ListGamesResponse {
-        private java.util.List<GameData> games;
+        public java.util.List<GameData> games;
 
         public java.util.List<GameData> getGames() {
             return games;
-        }
-
-        public void setGames(java.util.List<GameData> games) {
-            this.games = games;
         }
     }
 }

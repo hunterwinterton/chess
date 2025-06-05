@@ -17,8 +17,7 @@ public class ServerFacadeTests {
         server = new Server();
         var port = server.run(0);
         System.out.println("Started test HTTP server on " + port);
-        String baseUrl = "http://localhost:" + port;
-        facade = new ServerFacade(baseUrl);
+        facade = new ServerFacade(port);
     }
 
     @AfterAll

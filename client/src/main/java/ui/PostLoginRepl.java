@@ -20,16 +20,21 @@ public class PostLoginRepl {
             System.out.print("[LOGGED_IN] >>> ");
             String input = scanner.nextLine().trim();
             String[] tokens = input.split("\\s+");
-            if (tokens.length == 0) continue;
+            if (tokens.length == 0) {
+                continue;
+            }
 
             switch (tokens[0].toLowerCase()) {
-                case "help"    -> printHelp();
-                case "logout"  -> { handleLogout(); return; }
-                case "create"  -> handleCreate(tokens);
-                case "list"    -> handleList();
-                case "join"    -> handleJoin(tokens);
+                case "help" -> printHelp();
+                case "logout" -> {
+                    handleLogout();
+                    return;
+                }
+                case "create" -> handleCreate(tokens);
+                case "list" -> handleList();
+                case "join" -> handleJoin(tokens);
                 case "observe" -> handleObserve(tokens);
-                default        -> System.out.println("Unknown command");
+                default -> System.out.println("Unknown command");
             }
         }
     }

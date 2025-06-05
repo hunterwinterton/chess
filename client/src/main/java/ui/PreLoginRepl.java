@@ -2,6 +2,7 @@ package ui;
 
 import client.ServerFacade;
 import model.AuthData;
+
 import java.util.Scanner;
 
 public class PreLoginRepl {
@@ -18,14 +19,16 @@ public class PreLoginRepl {
             System.out.print("[LOGGED_OUT] >>> ");
             String input = scanner.nextLine().trim();
             String[] tokens = input.split("\\s+");
-            if (tokens.length == 0) continue;
+            if (tokens.length == 0) {
+                continue;
+            }
 
             switch (tokens[0].toLowerCase()) {
-                case "help"     -> printHelp();
-                case "quit"     -> System.exit(0);
-                case "login"    -> handleLogin(tokens);
+                case "help" -> printHelp();
+                case "quit" -> System.exit(0);
+                case "login" -> handleLogin(tokens);
                 case "register" -> handleRegister(tokens);
-                default         -> System.out.println("Unknown command");
+                default -> System.out.println("Unknown command");
             }
         }
     }

@@ -8,10 +8,10 @@ public class Main {
         System.out.println("♕ 240 Chess Client: " + piece);
         System.out.println("Type 'help' for a list of commands");
 
-        String serverUrl = "http://localhost:8080";
+        int port = 8080;
         if (args.length == 1) {
-            serverUrl = args[0];
+            port = Integer.parseInt(args[0]);
         }
-        new PreLoginRepl(new ServerFacade(serverUrl)).run();
+        new PreLoginRepl(new ServerFacade(port)).run();
     }
 }
