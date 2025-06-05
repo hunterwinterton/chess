@@ -28,11 +28,14 @@ public class ChessBoardDrawer {
             int displayRank = whitePerspective ? 8 - row : row + 1;
             System.out.print(displayRank + " ");
 
+            int boardRowIndex = whitePerspective
+                    ? 7 - row
+                    :     row;
+
             for (int col = 0; col < 8; col++) {
-                int boardRowIndex = whitePerspective ? (8 - displayRank) : (displayRank - 1);
                 int boardColIndex = whitePerspective ? col : (7 - col);
 
-                if ((boardRowIndex + boardColIndex) % 2 == 0) {
+                if ((boardRowIndex + boardColIndex) % 2 != 0) {
                     System.out.print(SET_BG_COLOR_LIGHT_GREY);
                 } else {
                     System.out.print(SET_BG_COLOR_DARK_GREY);
