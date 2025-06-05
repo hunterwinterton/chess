@@ -55,7 +55,7 @@ public class PostLoginRepl {
             serverFacade.setAuthToken(null);
             System.out.println("Logged out successfully");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
+            System.out.println(e.getMessage());
         }
     }
 
@@ -76,7 +76,7 @@ public class PostLoginRepl {
             }
             System.out.println("Game created with ID: " + clientIndex);
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage().replaceFirst("Error: \\d+ - ", ""));
+            System.out.println(e.getMessage());
         }
     }
 
@@ -95,7 +95,7 @@ public class PostLoginRepl {
                         i + 1, g.gameName(), white, black);
             }
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 
@@ -118,7 +118,7 @@ public class PostLoginRepl {
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 
@@ -140,7 +140,7 @@ public class PostLoginRepl {
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 }

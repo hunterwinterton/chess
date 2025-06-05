@@ -89,6 +89,6 @@ public class GameHandler {
         } else {
             res.status(500);
         }
-        return gson.toJson(Map.of("message", "Error: " + e.getMessage()));
+        return gson.toJson(Map.of("message", e.getMessage()));
     }
 }

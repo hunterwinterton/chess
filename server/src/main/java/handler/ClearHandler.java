@@ -27,6 +27,6 @@ public class ClearHandler {
 
     private Object handleException(Exception e, Response res) {
         res.status(500);
-        return gson.toJson(Map.of("message", "Error: " + e.getMessage()));
+        return gson.toJson(Map.of("message", e.getMessage()));
     }
 }

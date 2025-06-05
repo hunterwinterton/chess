@@ -87,7 +87,13 @@ public class ServerFacade {
         }
 
         if (response.statusCode() >= 400) {
-            throw new Exception("Error: " + response.statusCode() + " - " + response.body());
+            String rawBody = response.body();
+            String plainMsg = null;
+            com.google.gson.JsonObject obj = gson.fromJson(rawBody, com.google.gson.JsonObject.class);
+            if (obj.has("message")) {
+                plainMsg = obj.get("message").getAsString();
+            }
+            throw new Exception(plainMsg);
         }
 
         if (responseClass != null) {

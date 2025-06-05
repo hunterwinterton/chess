@@ -51,7 +51,7 @@ public class PreLoginRepl {
             System.out.println("Logged in as " + authData.username());
             new PostLoginRepl(serverFacade).run();
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 
@@ -66,7 +66,7 @@ public class PreLoginRepl {
             System.out.println("Logged in as " + authData.username());
             new PostLoginRepl(serverFacade).run();
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());
+            System.out.println(e.getMessage());
         }
     }
 }
