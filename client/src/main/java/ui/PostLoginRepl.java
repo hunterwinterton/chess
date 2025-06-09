@@ -6,6 +6,10 @@ import model.GameData;
 import java.util.List;
 import java.util.Scanner;
 
+import client.WebSocketCommunicator;
+import websocket.commands.UserGameCommand;
+//import ui.GameplayRepl;
+
 public class PostLoginRepl {
     private final ServerFacade serverFacade;
     private final Scanner scanner = new Scanner(System.in);
@@ -114,7 +118,15 @@ public class PostLoginRepl {
             int gameID = currentGames.get(idx - 1).gameID();
             serverFacade.joinGame(gameID, playerColor);
             System.out.println("Joined game " + idx + " as " + (playerColor != null ? playerColor : "observer"));
-            ChessBoardDrawer.drawBoard(playerColor != null ? playerColor : "WHITE");
+            WebSocketCommunicator wc = new WebSocketCommunicator();
+            wc.connect();
+            String token = serverFacade.getAuthToken();
+            wc.send(new UserGameCommand(
+                    UserGameCommand.CommandType.CONNECT,
+                    token,
+                    gameID
+            ));
+            new GameplayRepl(gameID, playerColor != null ? playerColor : "WHITE", wc).run();
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
@@ -136,7 +148,16 @@ public class PostLoginRepl {
             int gameID = currentGames.get(idx - 1).gameID();
             serverFacade.joinGame(gameID, "WHITE");
             System.out.println("Observing game " + idx);
-            ChessBoardDrawer.drawBoard("WHITE");
+            WebSocketCommunicator wc = new WebSocketCommunicator();
+            wc.connect();
+            String token = serverFacade.getAuthToken();
+            wc.send(new UserGameCommand(
+                    UserGameCommand.CommandType.CONNECT,
+                    token,
+                    gameID
+            ));
+            new GameplayRepl(gameID, "OBSERVER", wc).run();
+//            ChessBoardDrawer.drawBoard("WHITE");
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {

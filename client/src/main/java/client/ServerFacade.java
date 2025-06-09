@@ -25,6 +25,10 @@ public class ServerFacade {
         this.authToken = authToken;
     }
 
+    public String getAuthToken() {
+        return authToken;
+    }
+
     public AuthData register(String username, String password, String email) throws Exception {
         UserData user = new UserData(username, password, email);
         return makeRequest("POST", "/user", user, AuthData.class);
