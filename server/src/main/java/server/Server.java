@@ -11,6 +11,7 @@ import service.ClearService;
 import service.GameService;
 import service.UserService;
 import spark.Spark;
+import websocket.WebSocketHandler;
 
 public class Server {
 
@@ -20,10 +21,6 @@ public class Server {
         Spark.staticFiles.location("web");
 
         // Register your endpoints and handle exceptions here.
-
-        //This line initializes the server and can be removed once you have a functioning endpoint
-        Spark.init();
-
         final DataAccess db;
         try {
             db = new MySqlDataAccess();
@@ -52,6 +49,12 @@ public class Server {
 
         // Register clear endpoint
         Spark.delete("/db", clearHandler::clear);
+
+        // Websocket
+        WebSocketHandler.configure(gameService, userService, db);
+        Spark.webSocket("/ws", WebSocketHandler.class);
+        //This line initializes the server and can be removed once you have a functioning endpoint
+        Spark.init();
 
         Spark.awaitInitialization();
         return Spark.port();
