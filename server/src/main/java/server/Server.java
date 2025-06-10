@@ -32,7 +32,9 @@ public class Server {
         GameService gameService = new GameService(db);
         ClearService clearService = new ClearService(db);
 
-        // Initialize handlers
+        WebSocketHandler.configure(gameService, userService, db);
+        Spark.webSocket("/ws", WebSocketHandler.class);
+
         UserHandler userHandler = new UserHandler(userService);
         GameHandler gameHandler = new GameHandler(gameService);
         ClearHandler clearHandler = new ClearHandler(clearService);
@@ -50,10 +52,6 @@ public class Server {
         // Register clear endpoint
         Spark.delete("/db", clearHandler::clear);
 
-        // Websocket
-        WebSocketHandler.configure(gameService, userService, db);
-        Spark.webSocket("/ws", WebSocketHandler.class);
-        //This line initializes the server and can be removed once you have a functioning endpoint
         Spark.init();
 
         Spark.awaitInitialization();
