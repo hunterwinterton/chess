@@ -8,7 +8,6 @@ import java.util.Scanner;
 
 import client.WebSocketCommunicator;
 import websocket.commands.UserGameCommand;
-//import ui.GameplayRepl;
 
 public class PostLoginRepl {
     private final ServerFacade serverFacade;
@@ -24,7 +23,7 @@ public class PostLoginRepl {
             System.out.print("[LOGGED_IN] >>> ");
             String input = scanner.nextLine().trim();
             String[] tokens = input.split("\\s+");
-            if (tokens.length == 0) {
+            if (tokens.length == 0 || tokens[0].isEmpty()) {
                 continue;
             }
 
@@ -126,7 +125,7 @@ public class PostLoginRepl {
                     token,
                     gameID
             ));
-            new GameplayRepl(gameID, playerColor != null ? playerColor : "WHITE", wc).run();
+            new GameplayRepl(gameID, playerColor != null ? playerColor : "WHITE", token, wc).run();
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
@@ -146,7 +145,6 @@ public class PostLoginRepl {
                 return;
             }
             int gameID = currentGames.get(idx - 1).gameID();
-            serverFacade.joinGame(gameID, "WHITE");
             System.out.println("Observing game " + idx);
             WebSocketCommunicator wc = new WebSocketCommunicator();
             wc.connect();
@@ -156,8 +154,7 @@ public class PostLoginRepl {
                     token,
                     gameID
             ));
-            new GameplayRepl(gameID, "OBSERVER", wc).run();
-//            ChessBoardDrawer.drawBoard("WHITE");
+            new GameplayRepl(gameID, "OBSERVER", token, wc).run();
         } catch (NumberFormatException ex) {
             System.out.println("Error: invalid game number");
         } catch (Exception e) {
