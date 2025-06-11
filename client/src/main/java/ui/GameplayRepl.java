@@ -1,0 +1,106 @@
+package ui;
+
+import client.WebSocketCommunicator;
+import websocket.commands.UserGameCommand;
+import websocket.commands.UserGameCommand.CommandType;
+import websocket.messages.ServerMessageObserver;
+import websocket.messages.LoadGameMessage;
+import websocket.messages.NotificationMessage;
+import websocket.messages.ErrorMessage;
+import chess.ChessGame;
+import chess.ChessMove;
+import chess.ChessPosition;
+
+import java.util.Collection;
+import java.util.Scanner;
+
+public class GameplayRepl implements ServerMessageObserver {
+    private final int gameID;
+    private final String role;
+    private final String authToken;
+    private final WebSocketCommunicator comm;
+    private ChessGame currentGame;
+    private boolean gameOver = false;
+
+    public GameplayRepl(int gameID, String role, String authToken, WebSocketCommunicator comm) {
+        this.gameID = gameID;
+        this.role = role;
+        this.authToken = authToken;
+        this.comm = comm;
+        comm.setObserver(this);
+    }
+
+    public void run() {
+        Scanner sc = new Scanner(System.in);
+        while (true) {
+            System.out.print("> ");
+            String line = sc.nextLine().trim();
+            if (line.isEmpty()) continue;
+            String[] t = line.split("\\s+");
+            String cmd = t[0].toUpperCase();
+
+            switch (cmd) {
+                case "HELP" -> System.out.println("HELP | MOVE | RESIGN | LEAVE | HIGHLIGHT | REDRAW");
+                case "MOVE", "MAKE_MOVE" -> {
+                    if (gameOver) {
+                        System.out.println("Game is over. Cannot make moves.");
+                        break;
+                    }
+                    if (t.length != 3) {
+                        System.out.println("Usage: MOVE <from> <to> (MOVE e2 e4)");
+                        break;
+                    }
+                    if (currentGame == null) {
+                        System.out.println("Game not loaded yet.");
+                        break;
+                    }
+                    ChessPosition s = parse(t[1]), e = parse(t[2]);
+                    if (s == null || e == null) {
+                        System.out.println("Invalid square(s). Use coordinates like e2 e4.");
+                        break;
+                    }
+                    ChessMove mv = new ChessMove(s, e, null);
+                    Collection<ChessMove> legal = currentGame.validMoves(s);
+                    if (legal != null && legal.contains(mv)) {
+                        comm.send(new UserGameCommand(
+                                CommandType.MAKE_MOVE,
+                                authToken,
+                                gameID,
+                                mv
+                        ));
+                    } else {
+                        System.out.println("Illegal move");
+                    }
+                }
+            }
+        }
+    }
+
+    private ChessPosition parse(String sq) {
+        if (sq == null || sq.length() != 2) return null;
+        int col = Character.toLowerCase(sq.charAt(0)) - 'a';
+        int row = sq.charAt(1) - '1';
+        if (row < 0 || row > 7 || col < 0 || col > 7) return null;
+        return new ChessPosition(row + 1, col + 1);
+    }
+
+    @Override
+    public void onLoadGame(LoadGameMessage msg) {
+        currentGame = msg.getGame();
+        ChessBoardDrawer.drawBoard(currentGame, !"BLACK".equalsIgnoreCase(role));
+    }
+
+    @Override
+    public void onNotification(NotificationMessage msg) {
+        System.out.println(msg.getMessage());
+        String text = msg.getMessage().toLowerCase();
+        if (text.contains("checkmate") || text.contains("stalemate") || text.contains("resign")) {
+            gameOver = true;
+        }
+    }
+
+    @Override
+    public void onError(ErrorMessage msg) {
+        System.out.println(msg.getErrorMessage());
+    }
+}
