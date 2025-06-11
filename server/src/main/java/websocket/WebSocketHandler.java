@@ -1,6 +1,7 @@
 package websocket;
 
 import chess.ChessGame;
+import chess.ChessMove;
 import com.google.gson.Gson;
 import model.GameData;
 import model.AuthData;
@@ -91,11 +92,10 @@ public class WebSocketHandler {
     @OnWebSocketMessage
     public void onMessage(Session session, String json) {
         UserGameCommand cmd = gson.fromJson(json, UserGameCommand.class);
-
+        int gameId = cmd.getGameID();
+        String user = getUsernameForToken(cmd.getAuthToken());
         switch (cmd.getCommandType()) {
             case CONNECT -> {
-                int gameId = cmd.getGameID();
-                String user = getUsernameForToken(cmd.getAuthToken());
                 if (user == null) {
                     sendError(session, "Error: invalid auth token");
                     return;
@@ -127,8 +127,6 @@ public class WebSocketHandler {
                         : "OBSERVER";
                 notifyOthers(gameId, session, user + " connected as " + role);
             }
-
-
             default -> sendError(session, "Error: unsupported command");
         }
     }
