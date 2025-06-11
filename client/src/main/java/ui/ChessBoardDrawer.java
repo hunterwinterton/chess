@@ -57,18 +57,14 @@ public class ChessBoardDrawer {
         System.out.println();
     }
 
-    public static void drawBoard(ChessGame game, boolean whitePerspective, ChessPosition highlight, Collection<ChessMove> moves) {
+    public static void drawBoard(ChessGame game, boolean whitePerspective,
+                                 ChessPosition highlight, Collection<ChessMove> moves) {
         if (game == null) {
             return;
         }
         ChessBoard board = game.getBoard();
 
-        System.out.print("  ");
-        for (int i = 0; i < 8; i++) {
-            int colIndex = whitePerspective ? i : 7 - i;
-            System.out.print(" " + COL_LABELS[colIndex] + " ");
-        }
-        System.out.println();
+        printColumnHeaders(whitePerspective);
 
         for (int row = 0; row < 8; row++) {
             int displayRank = whitePerspective ? 8 - row : row + 1;
@@ -79,19 +75,9 @@ public class ChessBoardDrawer {
             for (int col = 0; col < 8; col++) {
                 int boardColIndex = whitePerspective ? col : (7 - col);
                 ChessPosition pos = new ChessPosition(boardRowIndex + 1, boardColIndex + 1);
-
-                boolean isHighlight = highlight != null && highlight.equals(pos);
-                boolean isMove = moves != null && moves.stream().anyMatch(m -> m.getEndPosition().equals(pos));
-
-                if (isHighlight) {
-                    System.out.print(SET_BG_COLOR_YELLOW);
-                } else if (isMove) {
-                    System.out.print(SET_BG_COLOR_GREEN);
-                } else if ((boardRowIndex + boardColIndex) % 2 != 0) {
-                    System.out.print(SET_BG_COLOR_LIGHT_GREY);
-                } else {
-                    System.out.print(SET_BG_COLOR_DARK_GREY);
-                }
+                String bgColor = determineBackgroundColor(
+                        boardRowIndex, boardColIndex, highlight, moves, pos);
+                System.out.print(bgColor);
 
                 ChessPiece piece = board.getPiece(pos);
                 System.out.print(pieceToUnicode(piece));
@@ -99,12 +85,34 @@ public class ChessBoardDrawer {
             System.out.println(RESET_BG_COLOR + " " + displayRank);
         }
 
+        printColumnHeaders(whitePerspective);
+    }
+
+    private static void printColumnHeaders(boolean whitePerspective) {
         System.out.print("  ");
         for (int i = 0; i < 8; i++) {
             int colIndex = whitePerspective ? i : 7 - i;
             System.out.print(" " + COL_LABELS[colIndex] + " ");
         }
         System.out.println();
+    }
+
+    private static String determineBackgroundColor(int boardRowIndex, int boardColIndex,
+                                                   ChessPosition highlight,
+                                                   Collection<ChessMove> moves,
+                                                   ChessPosition pos) {
+        boolean isHighlight = highlight != null && highlight.equals(pos);
+        boolean isMove = moves != null && moves.stream().anyMatch(m -> m.getEndPosition().equals(pos));
+
+        if (isHighlight) {
+            return SET_BG_COLOR_YELLOW;
+        } else if (isMove) {
+            return SET_BG_COLOR_GREEN;
+        } else if ((boardRowIndex + boardColIndex) % 2 != 0) {
+            return SET_BG_COLOR_LIGHT_GREY;
+        } else {
+            return SET_BG_COLOR_DARK_GREY;
+        }
     }
 
     private static String pieceToUnicode(ChessPiece piece) {

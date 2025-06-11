@@ -61,7 +61,4 @@ public class WebSocketCommunicator implements WebSocket.Listener {
         w.request(1);
         return null;
     }
-
-    public void onClosed(WebSocket w, int c, String r) {
-    }
 }

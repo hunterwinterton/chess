@@ -128,22 +128,44 @@ public class WebSocketHandler {
         }
     }
 
-    private void handleConnect(Session session, UserGameCommand cmd, int gameId, String user) {
+    private GameData validateAndLoadGame(Session session, int gameId, String user) {
         if (user == null) {
             sendError(session, "Error: invalid auth token");
-            return;
+            return null;
         }
-        GameData data;
+
         try {
-            data = db.getGame(gameId);
+            GameData data = db.getGame(gameId);
+            if (data == null) {
+                sendError(session, "Error: game not found");
+            }
+            return data;
         } catch (DataAccessException e) {
             sendError(session, "Error: could not load game");
-            return;
+            return null;
         }
+    }
+
+    private boolean validatePlayerRole(GameData data, String user) {
+        return Objects.equals(user, data.whiteUsername())
+                || Objects.equals(user, data.blackUsername());
+    }
+
+    private boolean isGameOver(GameData data, ChessGame chess) {
+        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+        return chess.isInCheckmate(ChessGame.TeamColor.WHITE)
+                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
+                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
+                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
+                || resigned;
+    }
+
+    private void handleConnect(Session session, UserGameCommand cmd, int gameId, String user) {
+        GameData data = validateAndLoadGame(session, gameId, user);
         if (data == null) {
-            sendError(session, "Error: game not found");
             return;
         }
+
         GAME_SESSIONS
                 .computeIfAbsent(gameId, k -> new CopyOnWriteArraySet<>())
                 .add(session);
@@ -160,45 +182,29 @@ public class WebSocketHandler {
     }
 
     private void handleMakeMove(Session session, UserGameCommand cmd, int gameId, String user) {
-        if (user == null) {
-            sendError(session, "Error: invalid auth token");
-            return;
-        }
-        GameData data;
-        try {
-            data = db.getGame(gameId);
-        } catch (DataAccessException e) {
-            sendError(session, "Error: could not load game");
-            return;
-        }
+        GameData data = validateAndLoadGame(session, gameId, user);
         if (data == null) {
-            sendError(session, "Error: game not found");
             return;
         }
 
         ChessGame chess = data.game();
         ChessMove move = cmd.getMove();
 
-        boolean isWhite = Objects.equals(user, data.whiteUsername());
-        boolean isBlack = Objects.equals(user, data.blackUsername());
-
-        if (!isWhite && !isBlack) {
+        if (!validatePlayerRole(data, user)) {
             sendError(session, "Error: only players can move");
             return;
         }
 
-        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
-        boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
-                || resigned;
-        if (over) {
+        if (isGameOver(data, chess)) {
             sendError(session, "Error: game is over");
             return;
         }
 
-        ChessGame.TeamColor playerColor = isWhite ? ChessGame.TeamColor.WHITE : ChessGame.TeamColor.BLACK;
+        ChessGame.TeamColor playerColor =
+                Objects.equals(user, data.whiteUsername())
+                        ? ChessGame.TeamColor.WHITE
+                        : ChessGame.TeamColor.BLACK;
+
         if (chess.getTeamTurn() != playerColor) {
             sendError(session, "Error: not your turn");
             return;
@@ -236,19 +242,8 @@ public class WebSocketHandler {
     }
 
     private void handleLeave(Session session, UserGameCommand cmd, int gameId, String user) {
-        if (user == null) {
-            sendError(session, "Error: invalid auth token");
-            return;
-        }
-        GameData data;
-        try {
-            data = db.getGame(gameId);
-        } catch (DataAccessException e) {
-            sendError(session, "Error: could not load game");
-            return;
-        }
+        GameData data = validateAndLoadGame(session, gameId, user);
         if (data == null) {
-            sendError(session, "Error: game not found");
             return;
         }
 
@@ -288,51 +283,29 @@ public class WebSocketHandler {
     }
 
     private void handleResign(Session session, UserGameCommand cmd, int gameId, String user) {
-        if (user == null) {
-            sendError(session, "Error: invalid auth token");
-            return;
-        }
-        GameData data;
-        try {
-            data = db.getGame(gameId);
-        } catch (DataAccessException e) {
-            sendError(session, "Error: could not load game");
-            return;
-        }
+        GameData data = validateAndLoadGame(session, gameId, user);
         if (data == null) {
-            sendError(session, "Error: game not found");
             return;
         }
 
-        boolean isWhite = Objects.equals(user, data.whiteUsername());
-        boolean isBlack = Objects.equals(user, data.blackUsername());
-
-        if (!isWhite && !isBlack) {
+        if (!validatePlayerRole(data, user)) {
             sendError(session, "Error: only players can resign");
             return;
         }
 
-        ChessGame chess = data.game();
-
-        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
-        boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
-                || resigned;
-        if (over) {
+        if (isGameOver(data, data.game())) {
             sendError(session, "Error: game is over");
             return;
         }
 
         GameData updated;
-        if (isWhite) {
+        if (Objects.equals(user, data.whiteUsername())) {
             updated = new GameData(
                     data.gameID(),
                     null,
                     data.blackUsername(),
                     data.gameName(),
-                    chess
+                    data.game()
             );
         } else {
             updated = new GameData(
@@ -340,7 +313,7 @@ public class WebSocketHandler {
                     data.whiteUsername(),
                     null,
                     data.gameName(),
-                    chess
+                    data.game()
             );
         }
         try {
