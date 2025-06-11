@@ -43,12 +43,12 @@ public class GameService {
         String black = game.blackUsername();
 
         if ("WHITE".equalsIgnoreCase(playerColor)) {
-            if (white != null) {
+            if (white != null && !white.equals(username)) {
                 throw new DataAccessException("Error: Color already taken");
             }
             db.updateGame(new GameData(gameID, username, black, game.gameName(), game.game()));
         } else if ("BLACK".equalsIgnoreCase(playerColor)) {
-            if (black != null) {
+            if (black != null && !black.equals(username)) {
                 throw new DataAccessException("Error: Color already taken");
             }
             db.updateGame(new GameData(gameID, white, username, game.gameName(), game.game()));

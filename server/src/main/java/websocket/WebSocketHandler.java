@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.Objects;
 
 @WebSocket
 public class WebSocketHandler {
@@ -126,6 +127,101 @@ public class WebSocketHandler {
                         : user.equals(data.blackUsername()) ? "BLACK"
                         : "OBSERVER";
                 notifyOthers(gameId, session, user + " connected as " + role);
+            }
+
+            case MAKE_MOVE -> {
+                if (user == null) {
+                    sendError(session, "Error: invalid auth token");
+                    return;
+                }
+                GameData data;
+                try {
+                    data = db.getGame(gameId);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not load game");
+                    return;
+                }
+                if (data == null) {
+                    sendError(session, "Error: game not found");
+                    return;
+                }
+
+                ChessGame chess = data.game();
+                ChessMove move = cmd.getMove();
+
+                boolean isWhite = Objects.equals(user, data.whiteUsername());
+                boolean isBlack = Objects.equals(user, data.blackUsername());
+
+                if (!isWhite && !isBlack) {
+                    sendError(session, "Error: only players can move");
+                    return;
+                }
+
+                boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+                boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
+                        || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
+                        || chess.isInStalemate(ChessGame.TeamColor.WHITE)
+                        || chess.isInStalemate(ChessGame.TeamColor.BLACK)
+                        || resigned;
+                if (over) {
+                    sendError(session, "Error: game is over");
+                    return;
+                }
+
+                ChessGame.TeamColor playerColor = isWhite ? ChessGame.TeamColor.WHITE : ChessGame.TeamColor.BLACK;
+                if (chess.getTeamTurn() != playerColor) {
+                    sendError(session, "Error: not your turn");
+                    return;
+                }
+
+                if (move == null) {
+                    sendError(session, "Error: missing move");
+                    return;
+                }
+                try {
+                    chess.makeMove(move);
+                } catch (Exception e) {
+                    sendError(session, "Error: invalid move");
+                    return;
+                }
+                GameData updated = new GameData(
+                        data.gameID(),
+                        data.whiteUsername(),
+                        data.blackUsername(),
+                        data.gameName(),
+                        chess
+                );
+                try {
+                    db.updateGame(updated);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not update game");
+                    return;
+                }
+                for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    sendMessage(s, new LoadGameMessage(chess));
+                }
+                String moveDesc = user + " moved from " +
+                        move.getStartPosition().toString() + " to " +
+                        move.getEndPosition().toString();
+                notifyOthers(gameId, session, moveDesc);
+
+                if (chess.isInCheckmate(ChessGame.TeamColor.WHITE)) {
+                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                        sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in checkmate"));
+                    }
+                } else if (chess.isInCheckmate(ChessGame.TeamColor.BLACK)) {
+                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                        sendMessage(s, new NotificationMessage(data.blackUsername() + " is in checkmate"));
+                    }
+                } else if (chess.isInCheck(ChessGame.TeamColor.WHITE)) {
+                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                        sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in check"));
+                    }
+                } else if (chess.isInCheck(ChessGame.TeamColor.BLACK)) {
+                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                        sendMessage(s, new NotificationMessage(data.blackUsername() + " is in check"));
+                    }
+                }
             }
             default -> sendError(session, "Error: unsupported command");
         }
