@@ -13,6 +13,8 @@ import service.UserService;
 import spark.Spark;
 import websocket.WebSocketHandler;
 
+import static spark.Spark.port;
+
 public class Server {
 
     public int run(int desiredPort) {

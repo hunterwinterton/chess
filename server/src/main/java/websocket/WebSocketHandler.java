@@ -5,13 +5,19 @@ import com.google.gson.Gson;
 import model.GameData;
 import model.AuthData;
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.annotations.*;
+import org.eclipse.jetty.websocket.api.annotations.WebSocket;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import service.GameService;
 import service.UserService;
 import dataaccess.DataAccess;
 import dataaccess.DataAccessException;
 import websocket.commands.UserGameCommand;
-import websocket.messages.*;
+import websocket.messages.LoadGameMessage;
+import websocket.messages.NotificationMessage;
+import websocket.messages.ErrorMessage;
+import websocket.messages.ServerMessage;
 
 import java.io.IOException;
 import java.util.Map;
@@ -45,7 +51,7 @@ public class WebSocketHandler {
     }
 
     private void removeSessionFromGame(int gameId, Session session) {
-        CopyOnWriteArraySet<Session> set = gameSessions.get(gameId);
+        var set = gameSessions.get(gameId);
         if (set != null) {
             set.remove(session);
             if (set.isEmpty()) {
@@ -56,48 +62,83 @@ public class WebSocketHandler {
 
     private void sendMessage(Session session, ServerMessage msg) {
         try {
-            if (session.isOpen()) session.getRemote().sendString(gson.toJson(msg));
-        } catch (IOException ignored) {}
+            if (session.isOpen()) {
+                session.getRemote().sendString(gson.toJson(msg));
+            }
+        } catch (IOException ignored) {
+        }
     }
 
     private void sendError(Session session, String msg) {
         sendMessage(session, new ErrorMessage(msg));
     }
 
-    private void notifyAll(int gameId, ServerMessage msg) {
-        CopyOnWriteArraySet<Session> set = gameSessions.get(gameId);
-        if (set != null) for (Session s : set) sendMessage(s, msg);
-    }
-
-    private void notifyAll(int gameId, String message) {
-        notifyAll(gameId, new NotificationMessage(message));
-    }
-
     private void notifyOthers(int gameId, Session except, String message) {
-        CopyOnWriteArraySet<Session> set = gameSessions.get(gameId);
-        if (set != null) for (Session s : set) if (!s.equals(except)) sendMessage(s, new NotificationMessage(message));
+        var set = gameSessions.get(gameId);
+        if (set != null) {
+            for (Session s : set) {
+                if (!s.equals(except)) {
+                    sendMessage(s, new NotificationMessage(message));
+                }
+            }
+        }
     }
 
-    private boolean isPlayer(String username, GameData game) {
-        return username.equals(game.whiteUsername()) || username.equals(game.blackUsername());
+    @OnWebSocketConnect
+    public void onConnect(Session session) {
     }
 
-    private String getRole(String username, GameData game) {
-        if (username.equals(game.whiteUsername())) return "WHITE";
-        if (username.equals(game.blackUsername())) return "BLACK";
-        return "OBSERVER";
+    @OnWebSocketMessage
+    public void onMessage(Session session, String json) {
+        UserGameCommand cmd = gson.fromJson(json, UserGameCommand.class);
+
+        switch (cmd.getCommandType()) {
+            case CONNECT -> {
+                int gameId = cmd.getGameID();
+                String user = getUsernameForToken(cmd.getAuthToken());
+                if (user == null) {
+                    sendError(session, "Error: invalid auth token");
+                    return;
+                }
+
+                GameData data;
+                try {
+                    data = db.getGame(gameId);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not load game");
+                    return;
+                }
+                if (data == null) {
+                    sendError(session, "Error: game not found");
+                    return;
+                }
+
+                gameSessions
+                        .computeIfAbsent(gameId, k -> new CopyOnWriteArraySet<>())
+                        .add(session);
+                sessionToUser.put(session, user);
+                sessionToGame.put(session, gameId);
+
+                ChessGame chess = data.game();
+                sendMessage(session, new LoadGameMessage(chess));
+
+                String role = user.equals(data.whiteUsername()) ? "WHITE"
+                        : user.equals(data.blackUsername()) ? "BLACK"
+                        : "OBSERVER";
+                notifyOthers(gameId, session, user + " connected as " + role);
+            }
+
+
+            default -> sendError(session, "Error: unsupported command");
+        }
     }
 
-    private String getUsernameForColor(GameData game, ChessGame.TeamColor color) {
-        return color == ChessGame.TeamColor.WHITE ?
-                (game.whiteUsername() != null ? game.whiteUsername() : "White") :
-                (game.blackUsername() != null ? game.blackUsername() : "Black");
-    }
-
-    private boolean isGameOver(ChessGame chess) {
-        return chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                || chess.isInStalemate(ChessGame.TeamColor.BLACK);
+    @OnWebSocketClose
+    public void onClose(Session session, int statusCode, String reason) {
+        Integer gameId = sessionToGame.remove(session);
+        sessionToUser.remove(session);
+        if (gameId != null) {
+            removeSessionFromGame(gameId, session);
+        }
     }
 }
