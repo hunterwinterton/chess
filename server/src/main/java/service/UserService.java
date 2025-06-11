@@ -9,7 +9,7 @@ import org.mindrot.jbcrypt.BCrypt;
 import java.util.UUID;
 
 public class UserService {
-    private final DataAccess db;
+    public final DataAccess db;
 
     public UserService(DataAccess db) {
         this.db = db;
