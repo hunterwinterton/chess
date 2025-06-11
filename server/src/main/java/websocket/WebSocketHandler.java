@@ -6,6 +6,7 @@ import com.google.gson.Gson;
 import model.GameData;
 import model.AuthData;
 import org.eclipse.jetty.websocket.api.Session;
+import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
@@ -85,6 +86,30 @@ public class WebSocketHandler {
         }
     }
 
+    private void broadcastGameState(int gameId, ChessGame chess) {
+        for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+            sendMessage(s, new LoadGameMessage(chess));
+        }
+    }
+
+    private void broadcastNotification(int gameId, String message) {
+        for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+            sendMessage(s, new NotificationMessage(message));
+        }
+    }
+
+    private void notifyCheckOrMate(int gameId, ChessGame chess, GameData data) {
+        if (chess.isInCheckmate(ChessGame.TeamColor.WHITE)) {
+            broadcastNotification(gameId, data.whiteUsername() + " is in checkmate");
+        } else if (chess.isInCheckmate(ChessGame.TeamColor.BLACK)) {
+            broadcastNotification(gameId, data.blackUsername() + " is in checkmate");
+        } else if (chess.isInCheck(ChessGame.TeamColor.WHITE)) {
+            broadcastNotification(gameId, data.whiteUsername() + " is in check");
+        } else if (chess.isInCheck(ChessGame.TeamColor.BLACK)) {
+            broadcastNotification(gameId, data.blackUsername() + " is in check");
+        }
+    }
+
     @OnWebSocketConnect
     public void onConnect(Session session) {
     }
@@ -95,253 +120,235 @@ public class WebSocketHandler {
         int gameId = cmd.getGameID();
         String user = getUsernameForToken(cmd.getAuthToken());
         switch (cmd.getCommandType()) {
-            case CONNECT -> {
-                if (user == null) {
-                    sendError(session, "Error: invalid auth token");
-                    return;
-                }
-
-                GameData data;
-                try {
-                    data = db.getGame(gameId);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not load game");
-                    return;
-                }
-                if (data == null) {
-                    sendError(session, "Error: game not found");
-                    return;
-                }
-
-                GAME_SESSIONS
-                        .computeIfAbsent(gameId, k -> new CopyOnWriteArraySet<>())
-                        .add(session);
-                SESSION_TO_USER.put(session, user);
-                SESSION_TO_GAME.put(session, gameId);
-
-                ChessGame chess = data.game();
-                sendMessage(session, new LoadGameMessage(chess));
-
-                String role = user.equals(data.whiteUsername()) ? "WHITE"
-                        : user.equals(data.blackUsername()) ? "BLACK"
-                        : "OBSERVER";
-                notifyOthers(gameId, session, user + " connected as " + role);
-            }
-
-            case MAKE_MOVE -> {
-                if (user == null) {
-                    sendError(session, "Error: invalid auth token");
-                    return;
-                }
-                GameData data;
-                try {
-                    data = db.getGame(gameId);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not load game");
-                    return;
-                }
-                if (data == null) {
-                    sendError(session, "Error: game not found");
-                    return;
-                }
-
-                ChessGame chess = data.game();
-                ChessMove move = cmd.getMove();
-
-                boolean isWhite = Objects.equals(user, data.whiteUsername());
-                boolean isBlack = Objects.equals(user, data.blackUsername());
-
-                if (!isWhite && !isBlack) {
-                    sendError(session, "Error: only players can move");
-                    return;
-                }
-
-                boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
-                boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                        || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                        || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                        || chess.isInStalemate(ChessGame.TeamColor.BLACK)
-                        || resigned;
-                if (over) {
-                    sendError(session, "Error: game is over");
-                    return;
-                }
-
-                ChessGame.TeamColor playerColor = isWhite ? ChessGame.TeamColor.WHITE : ChessGame.TeamColor.BLACK;
-                if (chess.getTeamTurn() != playerColor) {
-                    sendError(session, "Error: not your turn");
-                    return;
-                }
-
-                if (move == null) {
-                    sendError(session, "Error: missing move");
-                    return;
-                }
-                try {
-                    chess.makeMove(move);
-                } catch (Exception e) {
-                    sendError(session, "Error: invalid move");
-                    return;
-                }
-                GameData updated = new GameData(
-                        data.gameID(),
-                        data.whiteUsername(),
-                        data.blackUsername(),
-                        data.gameName(),
-                        chess
-                );
-                try {
-                    db.updateGame(updated);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not update game");
-                    return;
-                }
-                for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                    sendMessage(s, new LoadGameMessage(chess));
-                }
-                String moveDesc = user + " moved from " +
-                        move.getStartPosition().toString() + " to " +
-                        move.getEndPosition().toString();
-                notifyOthers(gameId, session, moveDesc);
-
-                if (chess.isInCheckmate(ChessGame.TeamColor.WHITE)) {
-                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                        sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in checkmate"));
-                    }
-                } else if (chess.isInCheckmate(ChessGame.TeamColor.BLACK)) {
-                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                        sendMessage(s, new NotificationMessage(data.blackUsername() + " is in checkmate"));
-                    }
-                } else if (chess.isInCheck(ChessGame.TeamColor.WHITE)) {
-                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                        sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in check"));
-                    }
-                } else if (chess.isInCheck(ChessGame.TeamColor.BLACK)) {
-                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                        sendMessage(s, new NotificationMessage(data.blackUsername() + " is in check"));
-                    }
-                }
-            }
-
-            case LEAVE -> {
-                if (user == null) {
-                    sendError(session, "Error: invalid auth token");
-                    return;
-                }
-                GameData data;
-                try {
-                    data = db.getGame(gameId);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not load game");
-                    return;
-                }
-                if (data == null) {
-                    sendError(session, "Error: game not found");
-                    return;
-                }
-
-                boolean isWhite = Objects.equals(user, data.whiteUsername());
-                boolean isBlack = Objects.equals(user, data.blackUsername());
-                GameData updated = data;
-                if (isWhite) {
-                    updated = new GameData(
-                            data.gameID(),
-                            null,
-                            data.blackUsername(),
-                            data.gameName(),
-                            data.game()
-                    );
-                } else if (isBlack) {
-                    updated = new GameData(
-                            data.gameID(),
-                            data.whiteUsername(),
-                            null,
-                            data.gameName(),
-                            data.game()
-                    );
-                }
-                if (isWhite || isBlack) {
-                    try {
-                        db.updateGame(updated);
-                    } catch (DataAccessException e) {
-                        sendError(session, "Error: could not update game");
-                        return;
-                    }
-                }
-
-                removeSessionFromGame(gameId, session);
-                SESSION_TO_USER.remove(session);
-                SESSION_TO_GAME.remove(session);
-                notifyOthers(gameId, session, user + " left the game");
-            }
-
-            case RESIGN -> {
-                if (user == null) {
-                    sendError(session, "Error: invalid auth token");
-                    return;
-                }
-                GameData data;
-                try {
-                    data = db.getGame(gameId);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not load game");
-                    return;
-                }
-                if (data == null) {
-                    sendError(session, "Error: game not found");
-                    return;
-                }
-
-                boolean isWhite = Objects.equals(user, data.whiteUsername());
-                boolean isBlack = Objects.equals(user, data.blackUsername());
-
-                if (!isWhite && !isBlack) {
-                    sendError(session, "Error: only players can resign");
-                    return;
-                }
-
-                ChessGame chess = data.game();
-
-                boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
-                boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                        || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                        || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                        || chess.isInStalemate(ChessGame.TeamColor.BLACK)
-                        || resigned;
-                if (over) {
-                    sendError(session, "Error: game is over");
-                    return;
-                }
-
-                GameData updated;
-                if (isWhite) {
-                    updated = new GameData(
-                            data.gameID(),
-                            null,
-                            data.blackUsername(),
-                            data.gameName(),
-                            chess
-                    );
-                } else {
-                    updated = new GameData(
-                            data.gameID(),
-                            data.whiteUsername(),
-                            null,
-                            data.gameName(),
-                            chess
-                    );
-                }
-                try {
-                    db.updateGame(updated);
-                } catch (DataAccessException e) {
-                    sendError(session, "Error: could not update game");
-                    return;
-                }
-                for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
-                    sendMessage(s, new NotificationMessage(user + " resigned"));
-                }
-            }
+            case CONNECT -> handleConnect(session, cmd, gameId, user);
+            case MAKE_MOVE -> handleMakeMove(session, cmd, gameId, user);
+            case LEAVE -> handleLeave(session, cmd, gameId, user);
+            case RESIGN -> handleResign(session, cmd, gameId, user);
             default -> sendError(session, "Error: unsupported command");
         }
+    }
+
+    private void handleConnect(Session session, UserGameCommand cmd, int gameId, String user) {
+        if (user == null) {
+            sendError(session, "Error: invalid auth token");
+            return;
+        }
+        GameData data;
+        try {
+            data = db.getGame(gameId);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not load game");
+            return;
+        }
+        if (data == null) {
+            sendError(session, "Error: game not found");
+            return;
+        }
+        GAME_SESSIONS
+                .computeIfAbsent(gameId, k -> new CopyOnWriteArraySet<>())
+                .add(session);
+        SESSION_TO_USER.put(session, user);
+        SESSION_TO_GAME.put(session, gameId);
+
+        ChessGame chess = data.game();
+        sendMessage(session, new LoadGameMessage(chess));
+
+        String role = Objects.equals(user, data.whiteUsername()) ? "WHITE"
+                : Objects.equals(user, data.blackUsername()) ? "BLACK"
+                : "OBSERVER";
+        notifyOthers(gameId, session, user + " connected as " + role);
+    }
+
+    private void handleMakeMove(Session session, UserGameCommand cmd, int gameId, String user) {
+        if (user == null) {
+            sendError(session, "Error: invalid auth token");
+            return;
+        }
+        GameData data;
+        try {
+            data = db.getGame(gameId);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not load game");
+            return;
+        }
+        if (data == null) {
+            sendError(session, "Error: game not found");
+            return;
+        }
+
+        ChessGame chess = data.game();
+        ChessMove move = cmd.getMove();
+
+        boolean isWhite = Objects.equals(user, data.whiteUsername());
+        boolean isBlack = Objects.equals(user, data.blackUsername());
+
+        if (!isWhite && !isBlack) {
+            sendError(session, "Error: only players can move");
+            return;
+        }
+
+        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+        boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
+                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
+                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
+                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
+                || resigned;
+        if (over) {
+            sendError(session, "Error: game is over");
+            return;
+        }
+
+        ChessGame.TeamColor playerColor = isWhite ? ChessGame.TeamColor.WHITE : ChessGame.TeamColor.BLACK;
+        if (chess.getTeamTurn() != playerColor) {
+            sendError(session, "Error: not your turn");
+            return;
+        }
+
+        if (move == null) {
+            sendError(session, "Error: missing move");
+            return;
+        }
+        try {
+            chess.makeMove(move);
+        } catch (Exception e) {
+            sendError(session, "Error: invalid move");
+            return;
+        }
+        GameData updated = new GameData(
+                data.gameID(),
+                data.whiteUsername(),
+                data.blackUsername(),
+                data.gameName(),
+                chess
+        );
+        try {
+            db.updateGame(updated);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not update game");
+            return;
+        }
+        broadcastGameState(gameId, chess);
+        String moveDesc = user + " moved from " +
+                move.getStartPosition().toString() + " to " +
+                move.getEndPosition().toString();
+        notifyOthers(gameId, session, moveDesc);
+        notifyCheckOrMate(gameId, chess, data);
+    }
+
+    private void handleLeave(Session session, UserGameCommand cmd, int gameId, String user) {
+        if (user == null) {
+            sendError(session, "Error: invalid auth token");
+            return;
+        }
+        GameData data;
+        try {
+            data = db.getGame(gameId);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not load game");
+            return;
+        }
+        if (data == null) {
+            sendError(session, "Error: game not found");
+            return;
+        }
+
+        boolean isWhite = Objects.equals(user, data.whiteUsername());
+        boolean isBlack = Objects.equals(user, data.blackUsername());
+        GameData updated = data;
+        if (isWhite) {
+            updated = new GameData(
+                    data.gameID(),
+                    null,
+                    data.blackUsername(),
+                    data.gameName(),
+                    data.game()
+            );
+        } else if (isBlack) {
+            updated = new GameData(
+                    data.gameID(),
+                    data.whiteUsername(),
+                    null,
+                    data.gameName(),
+                    data.game()
+            );
+        }
+        if (isWhite || isBlack) {
+            try {
+                db.updateGame(updated);
+            } catch (DataAccessException e) {
+                sendError(session, "Error: could not update game");
+                return;
+            }
+        }
+
+        removeSessionFromGame(gameId, session);
+        SESSION_TO_USER.remove(session);
+        SESSION_TO_GAME.remove(session);
+        notifyOthers(gameId, session, user + " left the game");
+    }
+
+    private void handleResign(Session session, UserGameCommand cmd, int gameId, String user) {
+        if (user == null) {
+            sendError(session, "Error: invalid auth token");
+            return;
+        }
+        GameData data;
+        try {
+            data = db.getGame(gameId);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not load game");
+            return;
+        }
+        if (data == null) {
+            sendError(session, "Error: game not found");
+            return;
+        }
+
+        boolean isWhite = Objects.equals(user, data.whiteUsername());
+        boolean isBlack = Objects.equals(user, data.blackUsername());
+
+        if (!isWhite && !isBlack) {
+            sendError(session, "Error: only players can resign");
+            return;
+        }
+
+        ChessGame chess = data.game();
+
+        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+        boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
+                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
+                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
+                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
+                || resigned;
+        if (over) {
+            sendError(session, "Error: game is over");
+            return;
+        }
+
+        GameData updated;
+        if (isWhite) {
+            updated = new GameData(
+                    data.gameID(),
+                    null,
+                    data.blackUsername(),
+                    data.gameName(),
+                    chess
+            );
+        } else {
+            updated = new GameData(
+                    data.gameID(),
+                    data.whiteUsername(),
+                    null,
+                    data.gameName(),
+                    chess
+            );
+        }
+        try {
+            db.updateGame(updated);
+        } catch (DataAccessException e) {
+            sendError(session, "Error: could not update game");
+            return;
+        }
+        broadcastNotification(gameId, user + " resigned");
     }
 }
