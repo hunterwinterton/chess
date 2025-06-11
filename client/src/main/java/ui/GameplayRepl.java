@@ -35,7 +35,9 @@ public class GameplayRepl implements ServerMessageObserver {
         while (true) {
             System.out.print("> ");
             String line = sc.nextLine().trim();
-            if (line.isEmpty()) continue;
+            if (line.isEmpty()) {
+                continue;
+            }
             String[] t = line.split("\\s+");
             String cmd = t[0].toUpperCase();
 
@@ -72,15 +74,71 @@ public class GameplayRepl implements ServerMessageObserver {
                         System.out.println("Illegal move");
                     }
                 }
+                case "RESIGN" -> {
+                    if (!gameOver) {
+                        comm.send(new UserGameCommand(
+                                CommandType.RESIGN,
+                                authToken,
+                                gameID
+                        ));
+                    } else {
+                        System.out.println("Game is already over.");
+                    }
+                }
+                case "LEAVE" -> {
+                    comm.send(new UserGameCommand(
+                            CommandType.LEAVE,
+                            authToken,
+                            gameID
+                    ));
+                    comm.close();
+                    return;
+                }
+                case "HIGHLIGHT" -> {
+                    if (currentGame == null) {
+                        System.out.println("Game not loaded yet.");
+                        break;
+                    }
+                    if (t.length != 2) {
+                        System.out.println("Usage: HIGHLIGHT <square> (HIGHLIGHT e2)");
+                        break;
+                    }
+                    ChessPosition p = parse(t[1]);
+                    if (p == null) {
+                        System.out.println("Invalid square. Use coordinates like e2.");
+                        break;
+                    }
+                    Collection<ChessMove> hl = currentGame.validMoves(p);
+                    ChessBoardDrawer.drawBoard(
+                            currentGame,
+                            !"BLACK".equalsIgnoreCase(role),
+                            p,
+                            hl
+                    );
+                }
+                case "REDRAW" -> {
+                    if (currentGame != null) {
+                        ChessBoardDrawer.drawBoard(currentGame, !"BLACK".equalsIgnoreCase(role));
+                    } else {
+                        System.out.println("Game not loaded yet.");
+                    }
+                }
+                default -> {
+                    System.out.println("Unknown command. Type HELP for available commands.");
+                }
             }
         }
     }
 
     private ChessPosition parse(String sq) {
-        if (sq == null || sq.length() != 2) return null;
+        if (sq == null || sq.length() != 2) {
+            return null;
+        }
         int col = Character.toLowerCase(sq.charAt(0)) - 'a';
         int row = sq.charAt(1) - '1';
-        if (row < 0 || row > 7 || col < 0 || col > 7) return null;
+        if (row < 0 || row > 7 || col < 0 || col > 7) {
+            return null;
+        }
         return new ChessPosition(row + 1, col + 1);
     }
 
