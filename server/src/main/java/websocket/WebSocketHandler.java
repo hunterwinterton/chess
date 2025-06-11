@@ -9,7 +9,6 @@ import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import service.GameService;
 import service.UserService;
 import dataaccess.DataAccess;
@@ -28,9 +27,9 @@ import java.util.Objects;
 
 @WebSocket
 public class WebSocketHandler {
-    private static final Map<Integer, CopyOnWriteArraySet<Session>> gameSessions = new ConcurrentHashMap<>();
-    private static final Map<Session, String> sessionToUser = new ConcurrentHashMap<>();
-    private static final Map<Session, Integer> sessionToGame = new ConcurrentHashMap<>();
+    private static final Map<Integer, CopyOnWriteArraySet<Session>> GAME_SESSIONS = new ConcurrentHashMap<>();
+    private static final Map<Session, String> SESSION_TO_USER = new ConcurrentHashMap<>();
+    private static final Map<Session, Integer> SESSION_TO_GAME = new ConcurrentHashMap<>();
 
     private final Gson gson = new Gson();
     private static GameService gameService;
@@ -53,11 +52,11 @@ public class WebSocketHandler {
     }
 
     private void removeSessionFromGame(int gameId, Session session) {
-        var set = gameSessions.get(gameId);
+        var set = GAME_SESSIONS.get(gameId);
         if (set != null) {
             set.remove(session);
             if (set.isEmpty()) {
-                gameSessions.remove(gameId);
+                GAME_SESSIONS.remove(gameId);
             }
         }
     }
@@ -76,7 +75,7 @@ public class WebSocketHandler {
     }
 
     private void notifyOthers(int gameId, Session except, String message) {
-        var set = gameSessions.get(gameId);
+        var set = GAME_SESSIONS.get(gameId);
         if (set != null) {
             for (Session s : set) {
                 if (!s.equals(except)) {
@@ -114,11 +113,11 @@ public class WebSocketHandler {
                     return;
                 }
 
-                gameSessions
+                GAME_SESSIONS
                         .computeIfAbsent(gameId, k -> new CopyOnWriteArraySet<>())
                         .add(session);
-                sessionToUser.put(session, user);
-                sessionToGame.put(session, gameId);
+                SESSION_TO_USER.put(session, user);
+                SESSION_TO_GAME.put(session, gameId);
 
                 ChessGame chess = data.game();
                 sendMessage(session, new LoadGameMessage(chess));
@@ -197,7 +196,7 @@ public class WebSocketHandler {
                     sendError(session, "Error: could not update game");
                     return;
                 }
-                for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                     sendMessage(s, new LoadGameMessage(chess));
                 }
                 String moveDesc = user + " moved from " +
@@ -206,19 +205,19 @@ public class WebSocketHandler {
                 notifyOthers(gameId, session, moveDesc);
 
                 if (chess.isInCheckmate(ChessGame.TeamColor.WHITE)) {
-                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                         sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in checkmate"));
                     }
                 } else if (chess.isInCheckmate(ChessGame.TeamColor.BLACK)) {
-                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                         sendMessage(s, new NotificationMessage(data.blackUsername() + " is in checkmate"));
                     }
                 } else if (chess.isInCheck(ChessGame.TeamColor.WHITE)) {
-                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                         sendMessage(s, new NotificationMessage(data.whiteUsername() + " is in check"));
                     }
                 } else if (chess.isInCheck(ChessGame.TeamColor.BLACK)) {
-                    for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                         sendMessage(s, new NotificationMessage(data.blackUsername() + " is in check"));
                     }
                 }
@@ -271,8 +270,8 @@ public class WebSocketHandler {
                 }
 
                 removeSessionFromGame(gameId, session);
-                sessionToUser.remove(session);
-                sessionToGame.remove(session);
+                SESSION_TO_USER.remove(session);
+                SESSION_TO_GAME.remove(session);
                 notifyOthers(gameId, session, user + " left the game");
             }
 
@@ -338,20 +337,11 @@ public class WebSocketHandler {
                     sendError(session, "Error: could not update game");
                     return;
                 }
-                for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                for (Session s : GAME_SESSIONS.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
                     sendMessage(s, new NotificationMessage(user + " resigned"));
                 }
             }
             default -> sendError(session, "Error: unsupported command");
-        }
-    }
-
-    @OnWebSocketClose
-    public void onClose(Session session, int statusCode, String reason) {
-        Integer gameId = sessionToGame.remove(session);
-        sessionToUser.remove(session);
-        if (gameId != null) {
-            removeSessionFromGame(gameId, session);
         }
     }
 }

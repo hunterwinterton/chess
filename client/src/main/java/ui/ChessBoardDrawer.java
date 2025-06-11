@@ -15,7 +15,9 @@ public class ChessBoardDrawer {
     private static final String[] COL_LABELS = {"a", "b", "c", "d", "e", "f", "g", "h"};
 
     public static void drawBoard(ChessGame game, boolean whitePerspective) {
-        if (game == null) return;
+        if (game == null) {
+            return;
+        }
         ChessBoard board = game.getBoard();
 
         System.out.print("  ");
@@ -56,7 +58,9 @@ public class ChessBoardDrawer {
     }
 
     public static void drawBoard(ChessGame game, boolean whitePerspective, ChessPosition highlight, Collection<ChessMove> moves) {
-        if (game == null) return;
+        if (game == null) {
+            return;
+        }
         ChessBoard board = game.getBoard();
 
         System.out.print("  ");
