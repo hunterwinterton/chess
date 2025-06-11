@@ -223,6 +223,125 @@ public class WebSocketHandler {
                     }
                 }
             }
+
+            case LEAVE -> {
+                if (user == null) {
+                    sendError(session, "Error: invalid auth token");
+                    return;
+                }
+                GameData data;
+                try {
+                    data = db.getGame(gameId);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not load game");
+                    return;
+                }
+                if (data == null) {
+                    sendError(session, "Error: game not found");
+                    return;
+                }
+
+                boolean isWhite = Objects.equals(user, data.whiteUsername());
+                boolean isBlack = Objects.equals(user, data.blackUsername());
+                GameData updated = data;
+                if (isWhite) {
+                    updated = new GameData(
+                            data.gameID(),
+                            null,
+                            data.blackUsername(),
+                            data.gameName(),
+                            data.game()
+                    );
+                } else if (isBlack) {
+                    updated = new GameData(
+                            data.gameID(),
+                            data.whiteUsername(),
+                            null,
+                            data.gameName(),
+                            data.game()
+                    );
+                }
+                if (isWhite || isBlack) {
+                    try {
+                        db.updateGame(updated);
+                    } catch (DataAccessException e) {
+                        sendError(session, "Error: could not update game");
+                        return;
+                    }
+                }
+
+                removeSessionFromGame(gameId, session);
+                sessionToUser.remove(session);
+                sessionToGame.remove(session);
+                notifyOthers(gameId, session, user + " left the game");
+            }
+
+            case RESIGN -> {
+                if (user == null) {
+                    sendError(session, "Error: invalid auth token");
+                    return;
+                }
+                GameData data;
+                try {
+                    data = db.getGame(gameId);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not load game");
+                    return;
+                }
+                if (data == null) {
+                    sendError(session, "Error: game not found");
+                    return;
+                }
+
+                boolean isWhite = Objects.equals(user, data.whiteUsername());
+                boolean isBlack = Objects.equals(user, data.blackUsername());
+
+                if (!isWhite && !isBlack) {
+                    sendError(session, "Error: only players can resign");
+                    return;
+                }
+
+                ChessGame chess = data.game();
+
+                boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+                boolean over = chess.isInCheckmate(ChessGame.TeamColor.WHITE)
+                        || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
+                        || chess.isInStalemate(ChessGame.TeamColor.WHITE)
+                        || chess.isInStalemate(ChessGame.TeamColor.BLACK)
+                        || resigned;
+                if (over) {
+                    sendError(session, "Error: game is over");
+                    return;
+                }
+
+                GameData updated;
+                if (isWhite) {
+                    updated = new GameData(
+                            data.gameID(),
+                            null,
+                            data.blackUsername(),
+                            data.gameName(),
+                            chess
+                    );
+                } else {
+                    updated = new GameData(
+                            data.gameID(),
+                            data.whiteUsername(),
+                            null,
+                            data.gameName(),
+                            chess
+                    );
+                }
+                try {
+                    db.updateGame(updated);
+                } catch (DataAccessException e) {
+                    sendError(session, "Error: could not update game");
+                    return;
+                }
+                for (Session s : gameSessions.getOrDefault(gameId, new CopyOnWriteArraySet<>())) {
+                    sendMessage(s, new NotificationMessage(user + " resigned"));
+                }
+            }
             default -> sendError(session, "Error: unsupported command");
         }
     }
