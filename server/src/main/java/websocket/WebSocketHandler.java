@@ -6,7 +6,6 @@ import com.google.gson.Gson;
 import model.GameData;
 import model.AuthData;
 import org.eclipse.jetty.websocket.api.Session;
-import org.eclipse.jetty.websocket.api.annotations.OnWebSocketClose;
 import org.eclipse.jetty.websocket.api.annotations.WebSocket;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketConnect;
 import org.eclipse.jetty.websocket.api.annotations.OnWebSocketMessage;
@@ -151,13 +150,6 @@ public class WebSocketHandler {
     private boolean validatePlayerRole(GameData data, String user) {
         return Objects.equals(user, data.whiteUsername())
                 || Objects.equals(user, data.blackUsername());
-    }
-
-    private boolean isGameOver(ChessGame chess) {
-        return chess.isInCheckmate(ChessGame.TeamColor.WHITE)
-                || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
-                || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                || chess.isInStalemate(ChessGame.TeamColor.BLACK);
     }
 
     private void handleConnect(Session session, UserGameCommand cmd, int gameId, String user) {
