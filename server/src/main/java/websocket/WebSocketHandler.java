@@ -22,6 +22,7 @@ import websocket.messages.ServerMessage;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.Objects;
@@ -31,6 +32,7 @@ public class WebSocketHandler {
     private static final Map<Integer, CopyOnWriteArraySet<Session>> GAME_SESSIONS = new ConcurrentHashMap<>();
     private static final Map<Session, String> SESSION_TO_USER = new ConcurrentHashMap<>();
     private static final Map<Session, Integer> SESSION_TO_GAME = new ConcurrentHashMap<>();
+    private static final Set<Integer> RESIGNED_GAMES = ConcurrentHashMap.newKeySet();
 
     private final Gson gson = new Gson();
     private static GameService gameService;
@@ -151,13 +153,11 @@ public class WebSocketHandler {
                 || Objects.equals(user, data.blackUsername());
     }
 
-    private boolean isGameOver(GameData data, ChessGame chess) {
-        boolean resigned = data.whiteUsername() == null || data.blackUsername() == null;
+    private boolean isGameOver(ChessGame chess) {
         return chess.isInCheckmate(ChessGame.TeamColor.WHITE)
                 || chess.isInCheckmate(ChessGame.TeamColor.BLACK)
                 || chess.isInStalemate(ChessGame.TeamColor.WHITE)
-                || chess.isInStalemate(ChessGame.TeamColor.BLACK)
-                || resigned;
+                || chess.isInStalemate(ChessGame.TeamColor.BLACK);
     }
 
     private void handleConnect(Session session, UserGameCommand cmd, int gameId, String user) {
@@ -195,7 +195,7 @@ public class WebSocketHandler {
             return;
         }
 
-        if (isGameOver(data, chess)) {
+        if (RESIGNED_GAMES.contains(gameId)) {
             sendError(session, "Error: game is over");
             return;
         }
@@ -293,10 +293,12 @@ public class WebSocketHandler {
             return;
         }
 
-        if (isGameOver(data, data.game())) {
+        if (RESIGNED_GAMES.contains(gameId)) {
             sendError(session, "Error: game is over");
             return;
         }
+
+        RESIGNED_GAMES.add(gameId);
 
         GameData updated;
         if (Objects.equals(user, data.whiteUsername())) {
