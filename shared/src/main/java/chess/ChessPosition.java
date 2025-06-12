@@ -47,4 +47,11 @@ public class ChessPosition {
     public int getColumn() {
         return col;
     }
+
+    @Override
+    public String toString() {
+        char col = (char) ('a' + (this.getColumn() - 1));
+        int row = this.getRow();
+        return "" + col + row;
+    }
 }
