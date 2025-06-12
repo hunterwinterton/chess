@@ -1,5 +1,6 @@
 package ui;
 
+import chess.ChessPiece;
 import client.WebSocketCommunicator;
 import websocket.commands.UserGameCommand;
 import websocket.commands.UserGameCommand.CommandType;
@@ -61,26 +62,54 @@ public class GameplayRepl implements ServerMessageObserver {
                         System.out.println("Invalid square(s). Use coordinates like e2 e4.");
                         break;
                     }
-                    ChessMove mv = new ChessMove(s, e, null);
                     Collection<ChessMove> legal = currentGame.validMoves(s);
-                    if (legal != null && legal.contains(mv)) {
-                        comm.send(new UserGameCommand(
-                                CommandType.MAKE_MOVE,
-                                authToken,
-                                gameID,
-                                mv
-                        ));
+                    if (legal != null) {
+                        boolean found = false;
+                        for (ChessMove cm : legal) {
+                            if (cm.getStartPosition().equals(s) && cm.getEndPosition().equals(e)) {
+                                ChessMove mv = cm;
+                                if (cm.getPromotionPiece() != null) {
+                                    System.out.print("Promote pawn to (q)ueen, (r)ook, (b)ishop, (n)ight? ");
+                                    String choice = sc.nextLine().trim().toLowerCase();
+                                    ChessPiece.PieceType promo = ChessPiece.PieceType.QUEEN;
+                                    switch (choice) {
+                                        case "r": promo = ChessPiece.PieceType.ROOK; break;
+                                        case "b": promo = ChessPiece.PieceType.BISHOP; break;
+                                        case "n": promo = ChessPiece.PieceType.KNIGHT; break;
+                                    }
+                                    mv = new ChessMove(s, e, promo);
+                                }
+                                comm.send(new UserGameCommand(
+                                        CommandType.MAKE_MOVE,
+                                        authToken,
+                                        gameID,
+                                        mv
+                                ));
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            System.out.println("Illegal move");
+                        }
                     } else {
                         System.out.println("Illegal move");
                     }
                 }
                 case "RESIGN" -> {
                     if (!gameOver) {
-                        comm.send(new UserGameCommand(
-                                CommandType.RESIGN,
-                                authToken,
-                                gameID
-                        ));
+                        System.out.print("Are you sure you want to resign? (y/n): ");
+                        String confirmation = sc.nextLine().trim().toLowerCase();
+                        if (confirmation.equals("y") || confirmation.equals("yes")) {
+                            comm.send(new UserGameCommand(
+                                    CommandType.RESIGN,
+                                    authToken,
+                                    gameID
+                            ));
+                            return;
+                        } else {
+                            System.out.println("Resign cancelled.");
+                        }
                     } else {
                         System.out.println("Game is already over.");
                     }
@@ -106,6 +135,10 @@ public class GameplayRepl implements ServerMessageObserver {
                     ChessPosition p = parse(t[1]);
                     if (p == null) {
                         System.out.println("Invalid square. Use coordinates like e2.");
+                        break;
+                    }
+                    if (currentGame.getBoard().getPiece(p) == null) {
+                        System.out.println("No piece at " + t[1] + " to highlight.");
                         break;
                     }
                     Collection<ChessMove> hl = currentGame.validMoves(p);
